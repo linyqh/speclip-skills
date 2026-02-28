@@ -325,6 +325,7 @@ voiceover(text=<文案>, provider=free, speed=1.0, output_path=<项目名>/audio
 1. **同一片段内**：每个 segment 的 `vo_video` 和 `orig_video` 不能重叠（即 `vo_video.end <= orig_video.start` 或 `orig_video.end <= vo_video.start`）
 2. **同源全局**：同一 `source_index` 下的所有时间段（所有 segment 的 vo_video + orig_video）按 start 排序后，前一段的 end 不能超过后一段的 start
 3. **时间边界**：所有时间段的 start >= 0 且 end <= 该源视频总时长
+4. **音频时长保障**：每个 segment 的 `vo_video` 时长必须 >= `vo_duration`。不满足时执行「音频超长修复流程」（详见 [references/scene-matching-guide.md](references/scene-matching-guide.md)）：无重叠冲突则延长 `vo_video`，有冲突则重写该段文案并重新生成音频
 
 发现冲突时：向后偏移冲突段的起始时间，修正后重新验证。
 
@@ -439,7 +440,7 @@ ffmpeg -y -f concat -safe 0 -i <项目名>/filelist.txt \
 | 人物关系错误导致剧情偏题 | 步骤 4 校验不充分，需重新交叉验证对话与视觉分析 |
 | 多个视频中同一角色识别为不同 Speaker | 在步骤 4 中统一修正 Speaker 映射 |
 | 步骤 3 调用多次 doubaovision | 步骤 3 每个视频只需 1 次全片分析，精确匹配由步骤 7 完成 |
-| 画面时长不足 | 调整文案缩短音频，或选择相邻相似画面 |
+| 画面时长不足 | 步骤 7「音频超长修复流程」自动处理：无重叠冲突时延长 `vo_video`，有冲突时自动重写该段文案并重新生成音频。禁止通过 `-shortest` 截断音频 |
 | 画面时间段重叠 | 按步骤 7 的验证规则逐项检查，冲突时向后偏移起始点 |
 | **成片无解说音频** | **步骤 8 阶段 B 被跳过。必须先 FFmpeg 标准化合并每个解说画面与配音（merged_vo_*.mp4）和原片片段（merged_orig_*.mp4），步骤 9 拼接时只用 `clips/merged/` 下的文件。不要用 rendervideo 工具或 timeline.json 渲染** |
 | 后半部分音画不同步 | 步骤 8 阶段 B 统一所有片段格式，步骤 9 用 concat demuxer 无损拼接 |

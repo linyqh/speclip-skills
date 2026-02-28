@@ -73,8 +73,31 @@ doubao-chat(file_path=\"<原片的绝对路径>\", prompt=\"...\")
 | JSON 解析失败 | 从返回文本中提取 JSON 块，去除 markdown 包裹 |
 | 解说画面时长 ≠ 音频时长 | 强制修正 `vo_video.end = vo_video.start + vo_duration` |
 | **时间段重叠** | **逐项验证无冲突（见下方规则）**，冲突时向后偏移冲突段 |
-| 时间超出视频总时长 | 裁剪到视频末尾，报告警告 |
+| 解说画面时长 < 音频时长（含时间超出视频总时长的情况） | **音频超长修复流程**（见下方） |
 | 缺少某段匹配 | 回退到 ASR 时间轴，按对应剧情时间顺序分配 |
+
+### 音频超长修复流程
+
+当某段 segment 的 `vo_video` 时长 < `vo_duration`（通常因为时间超出视频总时长被裁剪），执行以下流程：
+
+**第一步 — 尝试延长**：
+- 计算目标结束时间：`needed_end = vo_video.start + vo_duration`
+- 检查 `needed_end` 是否 <= 该源视频总时长
+- 检查延长后的 `[vo_video.start, needed_end]` 是否与以下任一时间段重叠：
+  - 同一 segment 的 `orig_video`
+  - 同一 `source_index` 下其他 segment 的所有 `vo_video` 和 `orig_video`
+- **无冲突** → 直接延长：`vo_video.end = needed_end`，修复完成
+- **有冲突** → 进入第二步
+
+**第二步 — 重写文案并重新生成音频**：
+1. 计算该 segment 可用的最大 `vo_video` 时长（即从 `vo_video.start` 到下一个最近时间段 start 的距离，且不超过视频总时长）
+2. 将该 segment 标记为"需重写"，记录可用最大时长
+3. 回退到步骤 5，仅重写该 segment 的解说文案，要求控制在可用时长内（按 1 秒约 4 字估算字数上限）
+4. 回退到步骤 6，仅重新生成该 segment 的配音音频
+5. 用新的 `vo_duration` 重新修正 `vo_video.end = vo_video.start + vo_duration`
+6. 重新执行全部校验（时间不重叠 + 时间边界）
+
+> 如果重写后仍超长，重复第二步直到通过。最多重试 2 次，仍失败则报错停止并提示用户手动调整。
 
 **⚠️ 强制验证步骤**：逐项检查以下规则，全部通过才能继续：
 
