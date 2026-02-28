@@ -72,18 +72,17 @@ doubao-chat(file_path=\"<原片的绝对路径>\", prompt=\"...\")
 |--------|---------|
 | JSON 解析失败 | 从返回文本中提取 JSON 块，去除 markdown 包裹 |
 | 解说画面时长 ≠ 音频时长 | 强制修正 `vo_video.end = vo_video.start + vo_duration` |
-| **时间段重叠** | **必须运行 `python drama_helper.py verify scene_matching.json` 验证**，冲突时向后偏移冲突段 |
+| **时间段重叠** | **逐项验证无冲突（见下方规则）**，冲突时向后偏移冲突段 |
 | 时间超出视频总时长 | 裁剪到视频末尾，报告警告 |
 | 缺少某段匹配 | 回退到 ASR 时间轴，按对应剧情时间顺序分配 |
 
-**⚠️ 强制验证步骤**：
-```bash
-# 生成 scene_matching.json 后必须执行
-python scripts/drama_helper.py verify <项目名>/analysis/scene_matching.json
+**⚠️ 强制验证步骤**：逐项检查以下规则，全部通过才能继续：
 
-# 验证失败时必须修正后重新验证
-# 验证通过后才能继续步骤 7
-```
+1. **同一片段内**：每个 segment 的 `vo_video` 和 `orig_video` 不能重叠（即 `vo_video.end <= orig_video.start` 或 `orig_video.end <= vo_video.start`）
+2. **同源全局**：同一 `source_index` 下的所有时间段（所有 segment 的 vo_video + orig_video）按 start 排序后，前一段的 end 不能超过后一段的 start
+3. **时间边界**：所有时间段的 start >= 0 且 end <= 该源视频总时长
+
+发现冲突时：向后偏移冲突段的起始时间，修正后重新验证。
 
 校验通过后，将结果写入 `<项目名>/analysis/scene_matching.json`。
 

@@ -44,81 +44,6 @@ description: 短剧解说视频制作工作流。将短剧原片制作成"解说
 - 短剧/网剧 → 10 短剧漫剧
 - 通用影视解说 → 9 影视解说 或 1 默认风格
 
-## 交互检查点（AskUserQuestion）
-
-在工作流的关键节点使用 `question` 工具与用户交互确认，避免方向偏差导致返工。
-
-### 检查点 1：风格确认（步骤 0 之前）
-
-当用户**未明确指定**解说风格时，**必须**使用 `question` 询问。已指定则跳过。
-
-**第一步 — 问风格偏好大类：**
-
-```
-question: "这个视频适合哪种解说风格？"
-header: "解说风格"
-options:
-  - label: "轻松搞笑"
-    description: "接地气、兄弟聊天、毒舌吐槽，适合搞笑/日常/沙雕类内容"
-  - label: "专业沉稳"
-    description: "冷静客观、深度解析、逻辑解构，适合悬疑/烧脑/高分影视"
-  - label: "温暖感性"
-    description: "情感共鸣、治愈舒缓，适合温情/家庭/爱情类内容"
-  - label: "高能爆款"
-    description: "悬念反转、句句爆点、3秒抓注意力，适合短剧/网剧/爽剧"
-```
-
-**第二步 — 根据大类细选具体风格：**
-
-| 大类 | 选项 |
-|------|------|
-| 轻松搞笑 | 2-口语化叙述 / 3-高能白话 / 5-吐槽式开头 |
-| 专业沉稳 | 1-默认风格 / 6-深度解析 / 8-电影解密师 |
-| 温暖感性 | 4-引导式开头 / 7-慢节奏 |
-| 高能爆款 | 9-影视解说 / 10-短剧漫剧 |
-
-> 如果大类下只有 2 个选项，直接展示。如有 3 个选项，全部展示。用户也可通过 Other 直接输入风格编号。
-
-### 检查点 2：剧情与人物确认（步骤 4 完成后）
-
-步骤 4 产出 `characters.md` 和更新后的 `plot_analysis.md` 后，**必须**向用户展示关键信息并确认。
-
-**先展示**：以简明列表形式输出人物档案摘要（姓名、身份、关系）和核心剧情走向（一句话概括每个阶段），然后提问：
-
-```
-question: "以上人物关系和剧情理解是否正确？"
-header: "剧情校验"
-options:
-  - label: "确认无误"
-    description: "人物关系和剧情理解正确，继续撰写文案"
-  - label: "需要修正"
-    description: "有错误需要修改，我会在下方说明具体问题"
-```
-
-> 用户选择「需要修正」或 Other 时，根据反馈修正 `characters.md` 和 `plot_analysis.md`，修正后再次展示确认，直到用户确认无误。
-
-### 检查点 3：文案审阅（步骤 5 完成后）
-
-解说文案撰写完成后，**必须**让用户审阅并确认。
-
-**先展示**：输出完整的 `voiceover.md` 文案内容（表格格式），以及总段数和预估总时长，然后提问：
-
-```
-question: "文案是否满意？"
-header: "文案审阅"
-options:
-  - label: "满意，继续"
-    description: "文案没问题，进入配音阶段"
-  - label: "调整语气"
-    description: "整体风格或语气需要微调"
-  - label: "修改内容"
-    description: "具体段落内容需要改动，我会说明哪些段落"
-  - label: "重新撰写"
-    description: "整体不满意，换个方向重写"
-```
-
-> 用户选择非「满意」选项时，根据反馈修改文案后再次展示确认。选择「重新撰写」时可追问是否需要更换风格。
-
 ## 核心原则
 
 - **视觉优先理解剧情**：仅靠对话无法完整理解短剧，必须结合画面分析才能写出准确的解说文案
@@ -130,7 +55,7 @@ options:
 - **音量控制**：解说片段使用原片静音画面，原片片段保留原声
 - **代入感为核心**：文案描述观众能在画面中看到的真实内容，不凭空编造
 - **禁止凭空估算画面时间段**：画面匹配必须通过 `doubao-chat` subagent 基于视觉模型确定，禁止根据对话时间戳或剧情推测来猜测
-- **时间不重叠（强制约束）**：`vo_video` 和 `orig_video` 的时间段绝对不能重叠。生成 `scene_matching.json` 后必须使用 `drama_helper.py verify` 验证
+- **时间不重叠（强制约束）**：`vo_video` 和 `orig_video` 的时间段绝对不能重叠。生成 `scene_matching.json` 后必须逐项验证无冲突
 
 ## 工具清单
 
@@ -170,7 +95,7 @@ options:
 ├── clips/                   # 步骤7-8产出：视频片段
 │   ├── voiceover/           # 解说画面（静音截取）
 │   ├── original/            # 原片片段（保留原声）
-│   └── merged/              # 合并后片段（解说画面+配音）
+│   └── merged/              # 标准化后片段（解说+配音 & 原片+原声）
 ├── output/                  # 步骤9产出：最终成片
 │   └── output.mp4
 └── state.json               # 项目状态文件
@@ -197,15 +122,38 @@ options:
 
 ### 步骤 0：项目初始化
 
-**→ 触发检查点 1**：若用户未指定解说风格，先通过 `AskUserQuestion` 确认风格选择，再执行初始化。
+若用户**已明确指定**风格编号，直接使用。否则执行以下两步提问：
 
+**⛔ STOP — 风格未指定时，必须先提问再继续。不要跳过，不要默认选 1。**
+
+**第一步**：调用 `AskUserQuestion` 工具询问风格大类：
+- question: `"这个视频适合哪种解说风格？"`
+- header: `"解说风格"`
+- options:
+  - `"轻松搞笑"` — 接地气、兄弟聊天、毒舌吐槽，适合搞笑/日常/沙雕类内容
+  - `"专业沉稳"` — 冷静客观、深度解析、逻辑解构，适合悬疑/烧脑/高分影视
+  - `"温暖感性"` — 情感共鸣、治愈舒缓，适合温情/家庭/爱情类内容
+  - `"高能爆款"` — 悬念反转、句句爆点、3秒抓注意力，适合短剧/网剧/爽剧
+
+**第二步**：根据用户选择的大类，再次调用 `AskUserQuestion` 展示该类下的具体风格：
+- 轻松搞笑 → 2-口语化叙述 / 3-高能白话 / 5-吐槽式开头
+- 专业沉稳 → 1-默认风格 / 6-深度解析 / 8-电影解密师
+- 温暖感性 → 4-引导式开头 / 7-慢节奏
+- 高能爆款 → 9-影视解说 / 10-短剧漫剧
+
+**确认风格后**，执行初始化：
+
+1. 创建项目目录结构：
 ```bash
-# 单个原片
-python scripts/drama_helper.py init --project-dir <项目名> --source <原片路径> [--style <风格ID>]
-
-# 多个原片（不合并，逐个独立处理）
-python scripts/drama_helper.py init --project-dir <项目名> --source <原片1> <原片2> [<原片3> ...] [--style <风格ID>]
+mkdir -p <项目名>/{analysis,scripts,audio,clips/voiceover,clips/original,clips/merged,output}
 ```
+
+2. 写入 `<项目名>/state.json` 初始状态（格式详见 [references/file-formats.md](references/file-formats.md)）：
+   - `project.sources`：原片绝对路径数组
+   - `project.style`：用户选择的风格 ID
+   - `progress.steps`：所有步骤设为 `"pending"`
+   - `segments`：空数组
+   - `used_time_ranges`：按源文件数量初始化空数组
 
 **产出**：项目目录结构 + `state.json`（所有步骤 `pending`）
 
@@ -300,9 +248,20 @@ doubaovision(
 - `characters.md`（人物档案，**独立文件**）
 - `plot_analysis.md`（校验确认版，覆盖初步版本）
 
-**→ 触发检查点 2**：产出完成后，必须向用户展示人物关系和剧情摘要，通过 `AskUserQuestion` 确认无误后才能进入步骤 5。
+**⛔ STOP — 产出完成后必须停下，等用户确认后才能进入步骤 5。不要跳过。**
 
-**状态更新**：`steps.4_verification = "completed"`
+1. 先向用户输出以下摘要信息：
+   - 人物列表（姓名、身份、彼此关系，每人一行）
+   - 核心剧情走向（一句话概括每个阶段：开场→冲突→转折→高潮→结局）
+2. 然后调用 `AskUserQuestion` 工具：
+   - question: `"以上人物关系和剧情理解是否正确？"`
+   - header: `"剧情校验"`
+   - options:
+     - `"确认无误"` — 人物关系和剧情理解正确，继续撰写文案
+     - `"需要修正"` — 有错误需要修改，我会在下方说明具体问题
+3. 用户选择「需要修正」时，根据反馈修正 `characters.md` 和 `plot_analysis.md`，修正后**重新展示并再次提问**，直到用户选择「确认无误」。
+
+**状态更新**：用户确认后 `steps.4_verification = "completed"`
 
 ### 步骤 5：撰写解说文案
 
@@ -323,9 +282,20 @@ doubaovision(
 
 **产出**：`voiceover.md`
 
-**→ 触发检查点 3**：文案完成后，必须向用户展示完整文案并通过 `AskUserQuestion` 确认满意后才能进入步骤 6。
+**⛔ STOP — 文案完成后必须停下，等用户审阅确认后才能进入步骤 6。不要跳过。**
 
-**状态更新**：`steps.5_script = "completed"`
+1. 先向用户输出完整的 `voiceover.md` 文案内容（表格格式），以及总段数和预估总时长。
+2. 然后调用 `AskUserQuestion` 工具：
+   - question: `"文案是否满意？"`
+   - header: `"文案审阅"`
+   - options:
+     - `"满意，继续"` — 文案没问题，进入配音阶段
+     - `"调整语气"` — 整体风格或语气需要微调
+     - `"修改内容"` — 具体段落内容需要改动，我会说明哪些段落
+     - `"重新撰写"` — 整体不满意，换个方向重写
+3. 用户选择非「满意」选项时，根据反馈修改文案后**重新展示并再次提问**。选择「重新撰写」时追问是否需要更换风格。
+
+**状态更新**：用户确认满意后 `steps.5_script = "completed"`
 
 ### 步骤 6：生成解说音频
 
@@ -342,19 +312,28 @@ voiceover(text=<文案>, provider=free, speed=1.0, output_path=<项目名>/audio
 
 > **必须调用 `doubao-chat` subagent 完成画面匹配，禁止手动估算时间段。**
 
-通过 `doubao-chat` subagent 与豆包视觉模型多轮对话，逐段匹配每段文案对应的画面时间段。匹配完成后**必须运行 `drama_helper.py verify` 验证时间不重叠**。
+通过 `doubao-chat` subagent 与豆包视觉模型多轮对话，逐段匹配每段文案对应的画面时间段。匹配完成后**必须验证时间不重叠**。
 
 > **多源时**：`scene_matching.json` 中每个 segment 需包含 `source_index` 字段，指明画面来自哪个原片。对每个原片独立调用 doubao-chat subagent 完成该片的画面匹配。
 
 详细的 subagent prompt 模板、匹配规则和校验流程见 [references/scene-matching-guide.md](references/scene-matching-guide.md)。
 
 **产出**：`scene_matching.json`
+
+**⚠️ 验证时间不重叠（必须执行）**：生成 `scene_matching.json` 后，逐项检查以下规则，全部通过才能继续：
+
+1. **同一片段内**：每个 segment 的 `vo_video` 和 `orig_video` 不能重叠（即 `vo_video.end <= orig_video.start` 或 `orig_video.end <= vo_video.start`）
+2. **同源全局**：同一 `source_index` 下的所有时间段（所有 segment 的 vo_video + orig_video）按 start 排序后，前一段的 end 不能超过后一段的 start
+3. **时间边界**：所有时间段的 start >= 0 且 end <= 该源视频总时长
+
+发现冲突时：向后偏移冲突段的起始时间，修正后重新验证。
+
 **状态更新**：`steps.7_matching = "completed"`
 
-### 步骤 8：截取视频与合并配音
+### 步骤 8：截取视频与标准化合并
 
-> **⚠️ 本步骤包含 3 个阶段，阶段 B 是确保解说音频不丢失的关键步骤，不可跳过。**
-> **⚠️ 不要使用 `rendervideo` 工具或 `drama_helper.py timeline` 做最终渲染，它们的格式不支持解说配音叠加，会导致成片无解说音频。必须使用 FFmpeg 手动渲染。**
+> **⚠️ 本步骤包含 2 个阶段：阶段 A（截取）和阶段 B（标准化合并）。阶段 B 是确保音视频格式统一和解说音频不丢失的关键步骤，不可跳过。**
+> **⚠️ 不要使用 `rendervideo` 工具做最终渲染，它的 timeline 格式不支持解说配音叠加，会导致成片无解说音频。必须使用 FFmpeg 手动渲染。**
 
 > **多源时**：每个 segment 的 `source_index` 指明从哪个原片截取，从 `state.json` 的 `project.sources` 数组中取对应路径。
 
@@ -370,83 +349,86 @@ trimvideo(input_path=<原片[source_index]>, start=<orig_video.start>, end=<orig
           output_path=<项目名>/clips/original/clip_orig_01.mp4)
 ```
 
-**阶段 B — 合并解说画面与配音（关键步骤）**：将每个解说画面与对应配音 FFmpeg 合并为一个文件，**用配音替换原声**：
+**阶段 B — 标准化与合并（关键步骤）**：将所有片段统一为相同的视频参数（分辨率、帧率、像素格式、音频格式），为步骤 9 的无损拼接做准备。
+
+> **参数来源**：从 `mediainfo.json` 读取源视频的分辨率（`SRC_RES`，如 `1920:1080`）和帧率（`SRC_FPS`，如 `30`），确保输出与原片一致。不要硬编码 fps=25。
+
+**B1 — 解说片段**：标准化视频 + 用配音替换原声：
 
 ```bash
 ffmpeg -y -i <项目名>/clips/voiceover/clip_vo_01.mp4 \
   -i <项目名>/audio/vo_01.mp3 \
-  -c:v copy -c:a aac -map 0:v -map 1:a -shortest \
+  -filter_complex "\
+    [0:v]fps=<SRC_FPS>,scale=<SRC_RES>:force_original_aspect_ratio=decrease,\
+    pad=<SRC_RES>:-1:-1,format=yuv420p[v]; \
+    [1:a]aformat=sample_rates=44100:channel_layouts=stereo[a]" \
+  -map "[v]" -map "[a]" \
+  -c:v libx264 -preset fast -crf 23 \
+  -c:a aac -b:a 128k -shortest \
   <项目名>/clips/merged/merged_vo_01.mp4
 ```
 
-> 原片片段（`clip_orig_*.mp4`）保留原声，无需处理。
+**B2 — 原片片段**：标准化视频 + 保留原声：
+
+```bash
+ffmpeg -y -i <项目名>/clips/original/clip_orig_01.mp4 \
+  -filter_complex "\
+    [0:v]fps=<SRC_FPS>,scale=<SRC_RES>:force_original_aspect_ratio=decrease,\
+    pad=<SRC_RES>:-1:-1,format=yuv420p[v]; \
+    [0:a]aformat=sample_rates=44100:channel_layouts=stereo[a]" \
+  -map "[v]" -map "[a]" \
+  -c:v libx264 -preset fast -crf 23 \
+  -c:a aac -b:a 128k \
+  <项目名>/clips/merged/merged_orig_01.mp4
+```
+
+> 如果原片片段没有音频轨道，用 `anullsrc` 生成静音轨：将 `[0:a]aformat=...` 替换为 `anullsrc=r=44100:cl=stereo[a]`。
 
 **产出**：
-- `clips/voiceover/clip_vo_*.mp4` — 解说画面（无配音）
-- `clips/original/clip_orig_*.mp4` — 原片片段（有原声）
-- `clips/merged/merged_vo_*.mp4` — **合并后的解说片段（有配音）**
+- `clips/voiceover/clip_vo_*.mp4` — 解说画面原始截取（中间产物）
+- `clips/original/clip_orig_*.mp4` — 原片片段原始截取（中间产物）
+- `clips/merged/merged_vo_*.mp4` — **标准化解说片段（含配音）**
+- `clips/merged/merged_orig_*.mp4` — **标准化原片片段（含原声）**
 
 **状态更新**：`steps.8_clips = "completed"`，`segments[].status = "merged"`
 
 ### 步骤 9：拼接渲染成片
 
-> **⚠️ 拼接时使用阶段 B 产出的 `merged_vo_*.mp4`（已含配音），不要用 `clip_vo_*.mp4`（无配音）。**
+> **⚠️ 拼接时使用阶段 B 产出的 `merged_vo_*.mp4` 和 `merged_orig_*.mp4`，不要用 `clips/voiceover/` 或 `clips/original/` 中的原始截取文件。**
 
-使用 FFmpeg `concat filter` 将所有片段按顺序拼接。输入顺序为：`merged_vo_01 → clip_orig_01 → merged_vo_02 → clip_orig_02 → ...`
+所有片段已在步骤 8 阶段 B 标准化为相同格式，使用 FFmpeg **concat demuxer** 无损拼接（`-c copy`，无需重新编码）。
+
+**第一步 — 生成文件列表**：
 
 ```bash
-ffmpeg -y \
-  -i <项目名>/clips/merged/merged_vo_01.mp4 \
-  -i <项目名>/clips/original/clip_orig_01.mp4 \
-  -i <项目名>/clips/merged/merged_vo_02.mp4 \
-  -i <项目名>/clips/original/clip_orig_02.mp4 \
-  ... \
-  -filter_complex "\
-    [0:v]fps=25,format=yuv420p[v0]; \
-    [0:a]aformat=sample_rates=44100:channel_layouts=stereo[a0]; \
-    [1:v]fps=25,format=yuv420p[v1]; \
-    [1:a]aformat=sample_rates=44100:channel_layouts=stereo[a1]; \
-    ... \
-    [v0][a0][v1][a1]...concat=n=<总片段数>:v=1:a=1[outv][outa] \
-  " \
-  -map "[outv]" -map "[outa]" \
-  -c:v libx264 -preset fast -crf 23 \
-  -c:a aac -b:a 128k \
+cat > <项目名>/filelist.txt << 'EOF'
+file 'clips/merged/merged_vo_01.mp4'
+file 'clips/merged/merged_orig_01.mp4'
+file 'clips/merged/merged_vo_02.mp4'
+file 'clips/merged/merged_orig_02.mp4'
+...
+EOF
+```
+
+**第二步 — 无损拼接**：
+
+```bash
+ffmpeg -y -f concat -safe 0 -i <项目名>/filelist.txt \
+  -c copy \
+  -movflags +faststart \
   <项目名>/output/output.mp4
 ```
 
 **关键点**：
+- **concat demuxer + `-c copy`**：步骤 8 已统一所有片段的编解码参数，此处直接流复制，速度极快且无质量损失
+- **`-movflags +faststart`**：将 MP4 元数据前置，支持网络播放时边下载边播放
 - **不要使用 `adelay` + `amix`**，会导致后半部分音画不同步
-- 所有音频统一为 `44100Hz stereo`，避免格式不兼容
-- `concat=n=<总片段数>` 中的 n = 解说段数 × 2（每段包含一个 merged_vo 和一个 clip_orig）
+- **不要使用 concat filter**：已无必要重新编码，且输入数量多时 filter_complex 会过于复杂
 
 完整的 FFmpeg 参数细节见 [references/rendering.md](references/rendering.md)。
 
 **产出**：`output/output.mp4` — 最终成片
 **状态更新**：`steps.9_render = "completed"`
-
-## 辅助脚本
-
-```bash
-# 初始化项目（支持多个原片）
-python scripts/drama_helper.py init --project-dir <项目名> --source <原片1> [<原片2> ...] [--style <风格ID>]
-
-# 添加解说片段
-python scripts/drama_helper.py add --project-dir <项目名> <序号> <时长秒> <文案>
-
-# 分配画面
-python scripts/drama_helper.py allocate_video --project-dir <项目名> <序号> [优先起始秒]
-python scripts/drama_helper.py allocate_orig --project-dir <项目名> <序号> [优先起始秒]
-
-# 查看摘要
-python scripts/drama_helper.py summary --project-dir <项目名>
-
-# 生成 timeline（仅供调试参考，不要用于最终渲染）
-python scripts/drama_helper.py timeline --project-dir <项目名>
-
-# 验证 scene_matching.json（步骤 7 后必须执行）
-python scripts/drama_helper.py verify <项目名>/analysis/scene_matching.json
-```
 
 ## 常见问题
 
@@ -458,10 +440,10 @@ python scripts/drama_helper.py verify <项目名>/analysis/scene_matching.json
 | 多个视频中同一角色识别为不同 Speaker | 在步骤 4 中统一修正 Speaker 映射 |
 | 步骤 3 调用多次 doubaovision | 步骤 3 每个视频只需 1 次全片分析，精确匹配由步骤 7 完成 |
 | 画面时长不足 | 调整文案缩短音频，或选择相邻相似画面 |
-| 画面时间段重叠 | 运行 `drama_helper.py verify` 验证，冲突时调整起始点 |
-| **成片无解说音频** | **步骤 8 阶段 B 被跳过。必须先 FFmpeg 合并每个解说画面与配音（merged_vo_*.mp4），步骤 9 拼接时用 merged_vo 而非 clip_vo。不要用 rendervideo 工具或 timeline.json 渲染** |
-| 后半部分音画不同步 | 先合并单个片段，用 `concat filter` 拼接，统一音频格式 |
-| 音频格式不兼容 | 用 `aformat` 滤镜统一为 `stereo/44100Hz` |
+| 画面时间段重叠 | 按步骤 7 的验证规则逐项检查，冲突时向后偏移起始点 |
+| **成片无解说音频** | **步骤 8 阶段 B 被跳过。必须先 FFmpeg 标准化合并每个解说画面与配音（merged_vo_*.mp4）和原片片段（merged_orig_*.mp4），步骤 9 拼接时只用 `clips/merged/` 下的文件。不要用 rendervideo 工具或 timeline.json 渲染** |
+| 后半部分音画不同步 | 步骤 8 阶段 B 统一所有片段格式，步骤 9 用 concat demuxer 无损拼接 |
+| 音频格式不兼容 | 步骤 8 阶段 B 用 `aformat` 滤镜统一为 `stereo/44100Hz`，步骤 9 无需再处理 |
 | 衔接生硬 / 节奏拖沓 | 选择情绪匹配的原片片段；精简文案，增加高潮比重 |
 
 ## 质量检查
@@ -472,10 +454,10 @@ python scripts/drama_helper.py verify <项目名>/analysis/scene_matching.json
 - [ ] 文案描述内容与视频画面实际发生的事匹配
 - [ ] 步骤 3 每个视频调用 1 次 `doubaovision` 完成全片视觉理解
 - [ ] 解说与原片穿插自然，无画面重复使用
-- [ ] 步骤 8 阶段 B 已执行：每个 `merged_vo_*.mp4` 包含解说配音（非静音）
-- [ ] 步骤 9 拼接使用 `merged_vo_*.mp4` 而非 `clip_vo_*.mp4`
-- [ ] 解说片段配音正确，分辨率与原片一致
-- [ ] 音画同步，音频格式统一（44100Hz stereo）
+- [ ] 步骤 8 阶段 B 已执行：`merged_vo_*.mp4` 含配音，`merged_orig_*.mp4` 含原声，所有片段格式统一
+- [ ] 步骤 9 拼接使用 `clips/merged/` 目录下的标准化文件，非 `clips/voiceover/` 或 `clips/original/`
+- [ ] 所有片段分辨率、帧率与原片一致（从 mediainfo.json 读取，非硬编码）
+- [ ] 音画同步，音频格式统一（44100Hz stereo），输出含 `+faststart`
 - [ ] 目录结构完整，`state.json` 所有步骤 completed
-- [ ] **`drama_helper.py verify` 验证通过，无时间冲突**
+- [ ] **scene_matching.json 时间冲突验证通过（步骤 7 验证规则）**
 - [ ] （多源时）各源文件独立分析，未合并处理
