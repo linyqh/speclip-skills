@@ -1,0 +1,30 @@
+[
+  {
+    "name": "drama-explainer",
+    "description": "短剧解说视频制作工作流。将短剧原片制作成"解说 + 原片交替穿插"的二创视频。",
+    "files": [
+      "drama-explainer/SKILL.md",
+      "drama-explainer/references/file-formats.md",
+      "drama-explainer/references/rendering.md",
+      "drama-explainer/references/scene-matching-guide.md",
+      "drama-explainer/references/styles/01-默认风格.md",
+      "drama-explainer/references/styles/02-口语化叙述.md",
+      "drama-explainer/references/styles/03-高能白话.md",
+      "drama-explainer/references/styles/04-引导式开头.md",
+      "drama-explainer/references/styles/05-吐槽式开头.md",
+      "drama-explainer/references/styles/06-深度解析.md",
+      "drama-explainer/references/styles/07-慢节奏.md",
+      "drama-explainer/references/styles/08-电影解密师.md",
+      "drama-explainer/references/styles/09-影视解说.md",
+      "drama-explainer/references/styles/10-短剧漫剧.md"
+    ]
+  },
+  {
+    "name": "skill-creator",
+    "description": "Skill 创建指南。帮助用户创建新的 Skill，扩展 AI 的专业能力和工作流。",
+    "files": [
+      "skill-creator/SKILL.md",
+      "skill-creator/SKILL-zh.md"
+    ]
+  }
+]
