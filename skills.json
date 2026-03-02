@@ -1,7 +1,7 @@
 [
   {
     "name": "drama-explainer",
-    "description": "短剧解说视频制作工作流。将短剧原片制作成"解说 + 原片交替穿插"的二创视频。",
+    "description": "短剧解说视频制作工作流。将短剧原片制作成解说与原片交替穿插的二创视频。",
     "files": [
       "drama-explainer/SKILL.md",
       "drama-explainer/references/file-formats.md",
