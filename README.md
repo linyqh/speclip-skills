@@ -7,184 +7,285 @@
 <h1 align="center">Speclip Skills</h1>
 
 <p align="center">
-  <strong>Open-source agent skills for <a href="https://www.speclip.com">Speclip</a> — the AI-powered video editor</strong>
+  <strong>Open-source agent skills for real video production workflows</strong>
 </p>
 
 <p align="center">
+  Turn repeatable editing methods into reusable AI workflows.
+</p>
+
+<p align="center">
+  <a href="./README.zh.md">中文说明</a> ·
   <a href="https://www.speclip.com">Website</a> ·
-  <a href="#available-skills">Skills</a> ·
+  <a href="#featured-skills">Featured Skills</a> ·
   <a href="#quick-start">Quick Start</a> ·
-  <a href="#creating-your-own-skill">Create a Skill</a>
+  <a href="#why-speclip">Why Speclip</a> ·
+  <a href="#faq">FAQ</a>
 </p>
 
 ---
 
-## What is Speclip?
+## What You Can Do
 
-[**Speclip**](https://www.speclip.com) is an AI-driven video editing tool that automates complex editing workflows through conversational AI. It provides:
+This repository contains **open-source agent skills** for video creation, editing, and workflow automation.
 
-- **CLI** — Interactive terminal UI with AI agent orchestration
-- **Desktop App** — Cross-platform native application (macOS / Windows / Linux) built with Tauri + React
-- **JavaScript SDK** — Client/Server interfaces for third-party integration
+You can use these skills to turn AI from a generic assistant into a workflow-aware video agent that follows structured methods instead of giving generic suggestions.
 
-### Key Features
+With the skills in this repo, you can:
 
-| Feature | Description |
-|---------|-------------|
-| AI Agent Orchestration | Multiple AI agents analyze, plan, and execute editing tasks |
-| Speech-to-Text | Transcription with speaker diarization and SRT generation |
-| Multi-track Compositing | Combine clips, voiceovers, background music, and stock footage |
-| Synthetic Voiceover | AI-generated narration from text |
-| Stock Footage Search | Integrated Pexels library |
-| 15+ AI Providers | Anthropic, OpenAI, Google, Azure, Groq, Mistral, and more |
+- create commentary-style short drama videos
+- reuse structured video workflows
+- apply production-ready FFmpeg best practices
+- create your own vertical skills for repeatable tasks
 
-> **Free Early Access** — [Download Speclip](https://www.speclip.com) and start editing with AI today.
+> **Open source in this repo:** skill definitions, workflow instructions, helper scripts, references  
+> **Requires Speclip for full execution:** runtime, built-in video tools, desktop / CLI workflow environment
 
 ---
 
-## What is This Repo?
+## Why This Repo Exists
 
-This repository contains **open-source agent skills** that extend Speclip (and [Claude Code](https://docs.anthropic.com/en/docs/claude-code)) with specialized workflows for video production tasks.
+Speclip itself is not open source.
 
-Skills are modular, self-contained packages that transform a general-purpose AI agent into a domain-specific expert. Each skill bundles:
+But the **workflow layer** behind great video production can be.
 
-- Procedural workflows (step-by-step instructions)
-- Reference documentation (domain knowledge, schemas)
-- Scripts (automation helpers)
+This repo is where we open-source reusable skills, structured workflows, helper scripts, and domain references — so creators and teams can study them, adapt them, and build on top of them.
 
-## Available Skills
+If you want the full environment to run these workflows end-to-end, download Speclip.
 
-### 🎬 drama-explainer
+> **Try Speclip:** https://www.speclip.com
 
-**AI-powered short drama commentary video production workflow.**
+---
 
-Transforms raw drama footage into "commentary + original footage interleaved" derivative videos — a hugely popular format on Chinese video platforms (Douyin, Bilibili, Kuaishou).
+## Featured Skills
 
-**What it does:**
+### 🎬 `drama-explainer`
 
-1. **ASR Extraction** — Transcribes dialogue with speaker diarization
-2. **Visual Analysis** — Understands plot, characters, and scenes from video frames
-3. **Cross-validation** — Verifies character relationships and plot accuracy
-4. **Commentary Script** — Writes narration combining dialogue + visual context
-5. **Scene Matching** — Precisely maps commentary to original footage timestamps
-6. **Automated Editing** — Renders final video with commentary voiceover interleaved with original audio
+**Turn raw short-drama footage into commentary videos.**
 
-**10 commentary styles** included — from casual conversational to professional film critic, covering comedy, suspense, romance, and more.
+A production workflow for one of the most popular formats on Chinese video platforms, especially Douyin, Bilibili, and Kuaishou.
 
-### 🛠️ skill-creator
+**What it helps with:**
 
-**Guide for creating new agent skills.**
+- dialogue transcription with speaker separation
+- scene and plot understanding
+- commentary script generation
+- commentary-to-scene matching
+- final rendering guidance
 
-A meta-skill that helps you create effective skills with proper structure, progressive disclosure, and bundled resources. Includes:
+**Included:**
 
-- Skill anatomy and design principles
-- Initialization scripts (`init_skill.py`)
-- Packaging and validation tools (`package_skill.py`)
-- Best practices for context window management
+- 10 commentary styles
+- structured references
+- rendering guidance
+- scene matching guidance
+
+### 🛠️ `ffmpeg-best-practice`
+
+**A production-ready FFmpeg playbook for agents and power users.**
+
+Use this skill when you need reliable FFmpeg command construction for real editing workflows instead of trial-and-error.
+
+**Best for:**
+
+- export and delivery
+- concatenation and compositing
+- subtitle burn-in
+- voiceover + BGM mixing
+- mixed media reliability
+
+### 🧱 `skill-creator`
+
+**Create your own agent skills with a proper structure.**
+
+A meta-skill for building new skills with progressive disclosure, bundled references, validation helpers, and packaging scripts.
+
+**Best for:**
+
+- AI workflow builders
+- video teams creating reusable methods
+- developers packaging domain workflows
+
+---
 
 ## Quick Start
 
-### Prerequisites
-
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI installed
-- [Speclip](https://www.speclip.com) installed (for video editing skills)
-
-### Install a Skill
+### 1. Clone this repo
 
 ```bash
-# Install the drama-explainer skill
-claude install-skill /path/to/speclip-skills/drama-explainer
-
-# Or install from this repo
-git clone https://github.com/user/speclip-skills.git
-claude install-skill ./speclip-skills/drama-explainer
+git clone <your-repo-url>
+cd speclip-skills
 ```
 
-### Use a Skill
+### 2. Install a skill
 
-Once installed, skills activate automatically when relevant. For example:
-
-```
-> 帮我把这个短剧做成解说视频
-
-# The drama-explainer skill activates and guides you through the full workflow
+```bash
+claude install-skill ./drama-explainer
 ```
 
-## Creating Your Own Skill
+Or install another skill:
 
-Use the `skill-creator` skill to bootstrap new skills:
-
-```
-skill-name/
-├── SKILL.md              # Required: frontmatter + instructions
-├── scripts/              # Optional: automation scripts
-├── references/           # Optional: domain knowledge docs
-└── assets/               # Optional: templates, images, fonts
+```bash
+claude install-skill ./ffmpeg-best-practice
+claude install-skill ./skill-creator
 ```
 
-**Key principles:**
+### 3. Run a task
 
-- **Concise is key** — Only include what the AI doesn't already know
-- **Progressive disclosure** — Metadata → SKILL.md body → references (loaded on demand)
-- **Appropriate freedom** — Match specificity to task fragility
+Example prompts:
 
-See the [skill-creator SKILL.md](skill-creator/SKILL.md) for the full guide.
+```text
+Help me turn this short drama into a commentary video.
+```
+
+```text
+Help me add subtitles, voiceover, and background music to this video.
+```
+
+```text
+Help me write a stable ffmpeg command to stitch three clips together and burn in subtitles.
+```
+
+```text
+Create a new skill for product demo video workflows.
+```
+
+---
+
+## What Makes These Skills Different
+
+Most AI assistants can describe a workflow.
+
+These skills help AI agents **follow one**.
+
+Each skill can include:
+
+- step-by-step execution guidance
+- domain references
+- output formats and constraints
+- helper scripts
+- production-specific best practices
+
+Instead of starting from scratch every time, you get a reusable workflow that can be improved over time.
+
+---
+
+## Who This Repo Is For
+
+This repo is useful if you are:
+
+- a creator making repeatable video formats
+- an editor building reusable workflows
+- a content team standardizing output
+- an AI workflow builder
+- a developer exploring agent-based media automation
+
+---
 
 ## Project Structure
 
-```
+```text
 speclip-skills/
-├── drama-explainer/           # Short drama commentary video skill
-│   ├── SKILL.md               # Core workflow (10 styles, 9-step pipeline)
+├── drama-explainer/
+│   ├── SKILL.md
 │   └── references/
-│       ├── styles/            # 10 commentary style definitions
-│       ├── file-formats.md    # Output file format specifications
-│       ├── rendering.md       # FFmpeg rendering guide
-│       └── scene-matching-guide.md
-├── skill-creator/             # Skill creation guide
-│   ├── SKILL.md               # English version
-│   ├── SKILL-zh.md            # Chinese version
+│       ├── file-formats.md
+│       ├── rendering.md
+│       ├── scene-matching-guide.md
+│       └── styles/
+├── ffmpeg-best-practice/
+│   └── SKILL.md
+├── skill-creator/
+│   ├── SKILL.md
+│   ├── SKILL-zh.md
+│   ├── references/
 │   └── scripts/
-│       ├── init_skill.py      # Scaffold new skills
-│       ├── package_skill.py   # Package for distribution
-│       └── quick_validate.py  # Validate skill structure
-└── README.md
+├── skills.json
+├── README.md
+└── README.zh.md
 ```
 
-## Tech Stack
+---
 
-This skills repo works with:
+## Why Speclip
 
-| Component | Technology |
-|-----------|-----------|
-| AI Agent Runtime | [Speclip](https://www.speclip.com) / [Claude Code](https://docs.anthropic.com/en/docs/claude-code) |
-| Video Processing | FFmpeg |
-| Speech Recognition | Qwen ASR (via Speclip) |
-| Visual Understanding | Doubao Vision (via Speclip) |
-| Voiceover Generation | TTS providers (via Speclip) |
-| Language | Python (scripts), Markdown (instructions) |
+This repo gives you the **open-source workflow layer**.
+
+Speclip gives you the **full runtime** to execute those workflows end-to-end.
+
+With Speclip, you get:
+
+- a desktop app for AI-assisted video workflows
+- a CLI for power users and automation
+- built-in video tools
+- model/provider flexibility
+- a better environment for real execution
+
+If this repo shows you the methods, Speclip helps you run them.
+
+> **Download Speclip:** https://www.speclip.com
+
+---
+
+## Suggested First Path
+
+If you're new here, start with this path:
+
+1. browse `drama-explainer`
+2. read the workflow and references
+3. install the skill
+4. try a real prompt
+5. explore `skill-creator`
+6. use Speclip for full execution
+
+---
+
+## FAQ
+
+### Is Speclip open source?
+
+No. Speclip itself is not open source.
+
+This repository open-sources the **skills layer**: workflow definitions, references, helper scripts, and reusable execution patterns.
+
+### Can I use these skills without Speclip?
+
+Some parts are useful as references or workflow patterns on their own.
+
+But for end-to-end video execution, these skills are designed to work best with Speclip.
+
+### Can I use these skills with Claude Code?
+
+Yes, where the runtime supports skill-style workflows.
+
+### Can I create my own skills?
+
+Yes. Start with `skill-creator`.
+
+---
 
 ## Contributing
 
-Contributions are welcome! To add a new skill:
+Contributions are welcome.
 
-1. Fork this repository
-2. Create your skill using `skill-creator`
-3. Test with real tasks
-4. Submit a pull request
+We especially welcome:
 
-## License
+- new vertical workflow skills
+- stronger references and examples
+- helper scripts
+- better packaging and validation
 
-This project is open source. See individual skill directories for specific licensing.
+---
 
 ## Links
 
-- [Speclip Official Website](https://www.speclip.com)
-- [Speclip Documentation](https://www.speclip.com)
-- [Report Issues](https://github.com/user/speclip-skills/issues)
+- Website: https://www.speclip.com
+- Download Speclip: https://www.speclip.com
+- Repository Skills Index: `skills.json`
+- Chinese README: `README.zh.md`
 
 ---
 
 <p align="center">
-  Built with ❤️ by the <a href="https://www.speclip.com">Speclip</a> team
+  Built by the <a href="https://www.speclip.com">Speclip</a> team
 </p>
