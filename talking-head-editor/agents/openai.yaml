@@ -1,0 +1,4 @@
+interface:
+  display_name: "Talking Head Editor"
+  short_description: "口播精剪与 jump cut 规划 skill"
+  default_prompt: "帮我根据字幕或 transcript 剪一条更紧凑的口播视频，删掉停顿、重复和口头禅。"

@@ -31,6 +31,16 @@
     ]
   },
   {
+    "name": "talking-head-editor",
+    "description": "口播 / talking-head 视频精剪 skill。适用于根据字幕、逐句 transcript 或审片笔记删除停顿、废话、口头禅，生成可执行的粗剪方案、jump cut 处理建议和导出要求。",
+    "files": [
+      "talking-head-editor/SKILL.md",
+      "talking-head-editor/references/workflow.md",
+      "talking-head-editor/references/edit-rules.md",
+      "talking-head-editor/references/file-formats.md"
+    ]
+  },
+  {
     "name": "skill-creator",
     "description": "Skill 创建指南。帮助用户创建新的 Skill，扩展 AI 的专业能力和工作流。",
     "files": [
