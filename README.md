@@ -94,6 +94,32 @@ Use this skill when you need reliable FFmpeg command construction for real editi
 - voiceover + BGM mixing
 - mixed media reliability
 
+### 🖥️ `landscape-subtitle-layout`
+
+**Subtitle positioning and ASS parameters for landscape videos.**
+
+Use this skill when you need stable subtitle placement for 16:9 content and want exact defaults for bottom-center alignment, margins, font sizing, and safe-area adjustments.
+
+**Best for:**
+
+- interview and commentary videos
+- tutorial or screen-recorded exports
+- subtitle burn-in with `.ass`
+- “move subtitles higher/lower” requests
+
+### 📱 `portrait-subtitle-layout`
+
+**Subtitle positioning and ASS parameters for portrait videos.**
+
+Use this skill when you need subtitle layouts for 9:16 shorts and want to avoid faces, CTA bars, product cards, and platform UI near the bottom.
+
+**Best for:**
+
+- Douyin / Reels / Shorts exports
+- talking-head subtitles
+- vertical commentary videos
+- bottom safe-area control
+
 ### 🧱 `skill-creator`
 
 **Create your own agent skills with a proper structure.**
@@ -127,6 +153,8 @@ Or install another skill:
 
 ```bash
 claude install-skill ./ffmpeg-best-practice
+claude install-skill ./landscape-subtitle-layout
+claude install-skill ./portrait-subtitle-layout
 claude install-skill ./skill-creator
 ```
 
@@ -194,6 +222,10 @@ speclip-skills/
 │       ├── scene-matching-guide.md
 │       └── styles/
 ├── ffmpeg-best-practice/
+│   └── SKILL.md
+├── landscape-subtitle-layout/
+│   └── SKILL.md
+├── portrait-subtitle-layout/
 │   └── SKILL.md
 ├── skill-creator/
 │   ├── SKILL.md

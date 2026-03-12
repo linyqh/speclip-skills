@@ -7,6 +7,20 @@
     ]
   },
   {
+    "name": "landscape-subtitle-layout",
+    "description": "横屏视频字幕位置与参数配置 skill。适用于 16:9 横屏视频的字幕烧录、ASS 样式调整、底部安全区控制，以及字幕高低与边距优化。",
+    "files": [
+      "landscape-subtitle-layout/SKILL.md"
+    ]
+  },
+  {
+    "name": "portrait-subtitle-layout",
+    "description": "竖屏视频字幕位置与参数配置 skill。适用于 9:16 竖屏视频的字幕烧录、ASS 样式调整、安全区控制，以及避让人物与底部 CTA 的字幕布局优化。",
+    "files": [
+      "portrait-subtitle-layout/SKILL.md"
+    ]
+  },
+  {
     "name": "drama-explainer",
     "description": "短剧解说视频制作工作流。基于已确认文案完成分析、配音、画面匹配与成片拼接。",
     "files": [

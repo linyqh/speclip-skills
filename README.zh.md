@@ -94,6 +94,32 @@ Speclip 主产品本身**不开源**。
 - 配音与 BGM 混音
 - 复杂源素材的稳健处理
 
+### 🖥️ `landscape-subtitle-layout`
+
+**横屏视频的字幕位置与 ASS 参数配置 skill。**
+
+当你需要为 16:9 内容稳定设置底部居中字幕、边距、字号、安全区，并且要明确回答“字幕再高一点/再低一点”这类问题时，用这个 skill。
+
+**适合场景：**
+
+- 访谈与解说视频
+- 教程 / 屏录导出
+- `.ass` 字幕烧录
+- 横屏字幕位置微调
+
+### 📱 `portrait-subtitle-layout`
+
+**竖屏视频的字幕位置与 ASS 参数配置 skill。**
+
+当你需要为 9:16 短视频设置字幕位置，并避让人脸、底部 CTA、商品卡和平台 UI 时，用这个 skill。
+
+**适合场景：**
+
+- 抖音 / Reels / Shorts 导出
+- 口播字幕
+- 竖屏剧情解说
+- 底部安全区控制
+
 ### 🧱 `skill-creator`
 
 **用规范结构创建你自己的 Agent Skill。**
@@ -127,6 +153,8 @@ claude install-skill ./drama-explainer
 
 ```bash
 claude install-skill ./ffmpeg-best-practice
+claude install-skill ./landscape-subtitle-layout
+claude install-skill ./portrait-subtitle-layout
 claude install-skill ./skill-creator
 ```
 
@@ -194,6 +222,10 @@ speclip-skills/
 │       ├── scene-matching-guide.md
 │       └── styles/
 ├── ffmpeg-best-practice/
+│   └── SKILL.md
+├── landscape-subtitle-layout/
+│   └── SKILL.md
+├── portrait-subtitle-layout/
 │   └── SKILL.md
 ├── skill-creator/
 │   ├── SKILL.md
