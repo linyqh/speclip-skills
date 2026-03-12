@@ -189,23 +189,49 @@ ASR 工具（qwenasr）已启用说话人识别（diarization），SRT 输出中
 - Speaker C 在对话中仅出现 2 句，视觉分析中确认存在第三个角色
 ```
 
-> **重要**：步骤 5 导入或整理 `voiceover.md` 时，必须使用 `characters.md` 中的人物称呼和关系描述，确保全片一致。
+> **重要**：步骤 5 必须先产出 `final_script.md`，再从中派生 `voiceover.md`。二者都必须使用 `characters.md` 中的人物称呼和关系描述，确保全片一致。
 
-## voiceover.md（解说文案）
+## final_script.md（最终剪辑脚本）
+
+这是步骤 5 的**主文件**，描述最终成片的逐段播放方式。
 
 ```markdown
-# 解说文案
+# 最终剪辑脚本
 
 - 总段数：6
+- 解说配音段：4
+- 播放原片段：2
 - 预估总时长：58.2s
 
-| 序号 | 文案 | 音频时长 | 对应剧情时间 | 原片片段时长 | 源文件 |
-|------|------|----------|------------|------------|--------|
-| 1 | 这个男人刚走进办公室... | 10.5s | 00:15-00:45 | 12s | 1 |
-| 2 | 正当所有人以为... | 8.2s | 00:45-01:20 | 15s | 1 |
+| 段落 | 播放方式 | 文案/台词 | 预估时长 | 对应剧情时间 | 源文件 | 备注 |
+|------|----------|-----------|---------|------------|--------|------|
+| 15 | 解说配音 | 回到娘家，怀孕的嫂子当着全家人的面说—— | 4.0s | 02:45-02:49 | 1 | 用解说铺垫冲突 |
+| 16 | 播放原片 | 房子这么小，小姑子带个拖油瓶回来，挤得我胎都不稳了。 | 6.0s | 02:49-02:55 | 1 | 使用原片表演和原声，不生成 TTS |
 ```
 
-> **多源时**：增加"源文件"列，标注该段画面来自哪个原片（编号从 1 开始）。单源时可省略此列。
+**字段规则**：
+- `播放方式` 只能是 `解说配音` 或 `播放原片`
+- `播放原片` 表示该段直接使用原片原声，不生成 TTS
+- `文案/台词` 可写解说文案，也可写要保留的原片台词
+- `源文件` 多源时必填；单源时可省略或固定为 `1`
+
+## voiceover.md（TTS 文案）
+
+这是从 `final_script.md` 中**筛选出 `播放方式=解说配音` 的段落**后得到的派生文件，供步骤 6 生成配音。
+
+```markdown
+# 解说配音文案
+
+- 总段数：4
+- 预估总时长：34.2s
+
+| 音频ID | final_segment | 文案 | 音频时长 | 对应剧情时间 | 源文件 |
+|--------|---------------|------|----------|------------|--------|
+| vo_15 | 15 | 回到娘家，怀孕的嫂子当着全家人的面说—— | 4.0s | 02:45-02:49 | 1 |
+| vo_17 | 17 | 这话不是抱怨，是驱逐令。 | 3.0s | 02:55-02:58 | 1 |
+```
+
+> **多源时**：增加“源文件”列，标注该段画面来自哪个原片（编号从 1 开始）。单源时可省略此列。
 
 ## visual_analysis.json（全片视觉描述）
 
@@ -234,7 +260,7 @@ ASR 工具（qwenasr）已启用说话人识别（diarization），SRT 输出中
 
 ## scene_matching.json（画面匹配结果）
 
-由 `doubao-chat` subagent 多轮对话匹配后输出。
+由 `doubao-chat` subagent 多轮对话匹配后输出。**新格式为逐段时间线格式**，按 `final_script.md` 的段落顺序排列。
 
 ```json
 {
@@ -244,16 +270,29 @@ ASR 工具（qwenasr）已启用说话人识别（diarization），SRT 输出中
   "fps": 0.5,
   "segments": [
     {
-      "segment": 1,
+      "segment": 15,
+      "play_mode": "tts",
       "source_index": 1,
-      "vo_text": "解说文案内容",
-      "vo_duration": 10.5,
-      "vo_video": {"start": 15.0, "end": 25.5},
-      "orig_video": {"start": 25.5, "end": 35.0},
+      "text": "回到娘家，怀孕的嫂子当着全家人的面说——",
+      "audio_file": "audio/vo_15.mp3",
+      "audio_duration": 4.0,
+      "video": {"start": 165.0, "end": 169.2},
       "match_reason": "匹配理由，便于人工审核"
+    },
+    {
+      "segment": 16,
+      "play_mode": "original",
+      "source_index": 1,
+      "text": "房子这么小，小姑子带个拖油瓶回来，挤得我胎都不稳了。",
+      "use_original_audio": true,
+      "video": {"start": 169.2, "end": 175.8},
+      "match_reason": "该时间段包含嫂子完整原台词和情绪表演，适合直接播放原片"
     }
   ],
-  "used_time_ranges": [[15.0, 25.5], [25.5, 35.0]]
+  "used_time_ranges": {
+    "1": [[165.0, 169.2], [169.2, 175.8]],
+    "2": []
+  }
 }
 ```
 
@@ -261,6 +300,10 @@ ASR 工具（qwenasr）已启用说话人识别（diarization），SRT 输出中
 > - `source`：单源时使用此字段
 > - `sources`：多源时使用此字段（数组），`source_index` 对应数组下标（从 1 开始）
 > - `source_index`：该片段画面来自哪个原片（编号从 1 开始）。单源时可省略或固定为 1
+> - `play_mode`：`tts` 或 `original`
+> - `audio_file` / `audio_duration`：仅 `tts` 段必填
+> - `use_original_audio`：仅 `original` 段使用，固定为 `true`
+> - `video`：该最终段落在原片中的实际使用时间段
 
 ## state.json（项目状态）
 
@@ -282,7 +325,8 @@ ASR 工具（qwenasr）已启用说话人识别（diarization），SRT 输出中
       "6_audio": "completed",
       "7_matching": "in_progress",
       "8_clips": "pending",
-      "9_render": "pending"
+      "9_render": "pending",
+      "10_subtitles": "pending"
     }
   },
   "media": {
@@ -305,19 +349,29 @@ ASR 工具（qwenasr）已启用说话人识别（diarization），SRT 输出中
   },
   "segments": [
     {
-      "id": 1,
+      "id": 15,
+      "play_mode": "tts",
+      "needs_tts": true,
       "source_index": 1,
-      "vo_text": "解说文案内容",
-      "vo_duration": 10.5,
-      "orig_duration": 12.0,
-      "vo_video": {"start": 15.0, "end": 25.5},
-      "orig_video": {"start": 25.5, "end": 37.5},
-      "audio_file": "audio/vo_01.mp3",
+      "text": "回到娘家，怀孕的嫂子当着全家人的面说——",
+      "audio_duration": 4.0,
+      "video": {"start": 165.0, "end": 169.2},
+      "audio_file": "audio/vo_15.mp3",
+      "status": "matched"
+    },
+    {
+      "id": 16,
+      "play_mode": "original",
+      "needs_tts": false,
+      "source_index": 1,
+      "text": "房子这么小，小姑子带个拖油瓶回来，挤得我胎都不稳了。",
+      "video": {"start": 169.2, "end": 175.8},
+      "use_original_audio": true,
       "status": "merged"
     }
   ],
   "used_time_ranges": {
-    "1": [[15.0, 25.5], [25.5, 37.5]],
+    "1": [[165.0, 169.2], [169.2, 175.8]],
     "2": []
   }
 }
