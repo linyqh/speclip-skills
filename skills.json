@@ -1,7 +1,7 @@
 [
   {
     "name": "ffmpeg-best-practice",
-    "description": "Speclip 视频编辑任务的生产级 FFmpeg 最佳实践。适用于命令构造、多段拼接、音频混合、字幕处理、VFR/CFR 规范化与多源素材兜底。",
+    "description": "精简版 FFmpeg 最佳实践。适用于稳定的视频压缩、微信兼容 MP4 导出、拼接、音频处理、字幕处理，以及常见编码回退决策。",
     "files": [
       "ffmpeg-best-practice/SKILL.md"
     ]

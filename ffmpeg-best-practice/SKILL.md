@@ -1,364 +1,205 @@
 ---
 name: ffmpeg-best-practice
 description: >
-  Production-ready FFmpeg playbook for video editing tasks in Speclip. Use when
-  the user needs robust FFmpeg command construction, multi-clip compositing,
-  audio mixing, subtitle burning/muxing, VFR-to-CFR normalization, and reliable
-  fallbacks for diverse source media.
+  Lean FFmpeg playbook for reliable video compression, WeChat-compatible MP4
+  export, clip stitching, audio mixing, subtitle handling, and quick fallback
+  decisions. Use for requests like “压缩视频”, “微信上传”, “体积太大”,
+  “导出更小但别糊”, “多段素材拼接”, “字幕烧录”, and “ffmpeg 报错”.
 ---
 
 # FFmpeg Best Practice
 
-Use this skill when the task requires direct FFmpeg work and reliability matters more than shorthand.
+Use this skill when the task requires direct FFmpeg work and the answer should be stable, compatible, and easy to adapt.
 
 ## Scope
 
-- Final exports and intermediate transcodes
-- Clip trimming and concatenation
-- Audio mixing (voiceover + BGM + source audio)
-- Resolution/FPS normalization
-- Subtitle burn-in or soft subtitle muxing
-- Hardware-accelerated exports with safe fallback
-- Playback/web optimization (`+faststart`)
+- Compression for smaller files without obvious quality loss
+- WeChat/mobile/web-safe MP4 output
+- Concat, trim, normalize, subtitle burn-in or muxing
+- Audio mixing and missing-audio handling
+- Hardware encode with software fallback
 
-## Trigger Phrases
-
-- "ffmpeg 报错"
-- "多段素材拼接"
-- "导出最终视频"
-- "加配音和背景音乐"
-- "有的视频没有音轨"
-- "VFR/CFR"
-- "字幕烧录"
-
-## Workflow
+## Core Workflow
 
 1. Probe input files with `ffprobe` before writing commands.
-2. Detect OS and available encoders with `ffmpeg -hide_banner -encoders` before choosing a re-encode path.
-3. Decide path: stream-copy vs re-encode.
-4. Prefer hardware video encoding for exports when available; keep software fallback ready.
-5. Handle audio presence explicitly (`a?` optional mapping or generated silence).
-6. Build command with deterministic output codec/muxing.
-7. Run once, inspect error, apply targeted fallback.
-8. Return command, output path, and why key flags were chosen.
+2. Check encoder availability once per machine/session.
+3. Decide whether the job is stream-copy or re-encode.
+4. For compression, default to `MP4 + H.264 + AAC + yuv420p + +faststart`.
+5. Prefer capped CRF first; use 2-pass only for a hard file-size target.
+6. Use `-map 0:a?` for optional audio and do not write `[0:a?]` inside `filter_complex`.
+7. If hardware encode fails or produces oversized output, fall back to `libx264`.
+8. Return the command, output path, chosen profile, and key flag rationale.
 
-## Input Checklist (Required)
+## Probe First
 
-Run for every input:
+Run for each input:
 
 ```bash
 ffprobe -v error -hide_banner -show_streams -show_format -of json "INPUT"
 ```
 
-And probe encoder availability once per machine/session:
+Check once per machine/session:
 
 ```bash
 ffmpeg -hide_banner -encoders
 ffmpeg -hide_banner -hwaccels
 ```
 
-Check:
+Minimum checks:
 
-- Has video stream?
-- Has audio stream?
-- Resolution and sample aspect ratio
-- Frame rate (`avg_frame_rate`, `r_frame_rate`)
-- Duration
-- Rotation metadata
-- Container/codec compatibility with target output
-- Available H.264/H.265 hardware encoders on this machine
-- Whether this job really needs hardware decode, or only hardware encode
+- Video/audio presence
+- Resolution, fps, duration, rotation
+- Whether target is compatibility-first or strict-size-first
+- Available H.264 hardware encoders on this machine
 
-## Decision Tree
+## Compression Rules
 
-1. Need frame-accurate cuts, filters, overlays, subtitles, speed changes, or mixing?
-- Yes: re-encode.
-- No: stream-copy is preferred.
+When the goal is “尽量小，但别太糊”:
 
-2. Multiple clips with exactly matching codecs/time bases/resolution?
-- Yes: concat demuxer route.
-- No or uncertain: concat filter route (re-encode).
+1. Do **not** copy streams. Re-encode.
+2. Keep `MP4 + H.264 + AAC + yuv420p + +faststart` as the default delivery target.
+3. Prefer `CRF + maxrate + bufsize` over pure fixed bitrate.
+4. Downscale before crushing bitrate.
+5. Clamp fps to `24/25/30` unless higher fps is genuinely needed.
+6. Use `AAC 64k~96k` for speech-heavy output, `96k~128k` for general content.
+7. Never upscale just to match a target profile.
 
-3. Any input may lack audio?
-- Yes: always use optional mapping (`-map 0:a?`) or create silence (`anullsrc`) where needed.
+## WeChat-Compatible Core Method
 
-4. Target is browser/mobile/web delivery?
-- Yes: prefer H.264 hardware encoder for the current OS if available; otherwise use `libx264`. Always keep `-pix_fmt yuv420p -movflags +faststart` and `-c:a aac`.
+Treat “微信压缩” as a compatibility-first export target, not a claim of exact parity with WeChat’s private pipeline.
 
-5. Source is VFR and timeline sync matters?
-- Yes: normalize to CFR (`-r TARGET_FPS`, plus sync settings).
+- Container: `mp4`
+- Video: `H.264`, `yuv420p`
+- Audio: `AAC-LC`, stereo, `44.1kHz` or `48kHz`
+- Delivery: `-movflags +faststart`
+- Frame rate: `24`, `25`, or `30`
+- Avoid 10-bit, unusual pixel formats, and fragile containers
 
-6. Are you exporting on macOS or Windows?
-- macOS: prefer `h264_videotoolbox` for H.264 delivery, `hevc_videotoolbox` only when HEVC is explicitly required.
-- Windows: prefer `h264_nvenc`, then `h264_qsv`, then `h264_amf`; use HEVC variants only when HEVC is explicitly required.
-- Any platform / encoder unavailable: fall back to `libx264`.
-
-## Platform Codec Policy
-
-Default principle:
-
-- Prioritize hardware video encoding for speed when the encoder is available.
-- Do **not** require hardware decode by default. For filter-heavy graphs (subtitles, concat filter, scale/pad, overlays, audio mix), software decode + hardware encode is usually the most portable path.
-- Keep audio on `aac` unless the task explicitly requires another codec.
-- For browser/mobile delivery, default to H.264 + AAC in MP4.
-
-Preferred H.264 encoder order:
-
-- macOS: `h264_videotoolbox` -> `libx264`
-- Windows: `h264_nvenc` -> `h264_qsv` -> `h264_amf` -> `libx264`
-
-Preferred HEVC encoder order when explicitly requested:
-
-- macOS: `hevc_videotoolbox` -> `libx265`
-- Windows: `hevc_nvenc` -> `hevc_qsv` -> `hevc_amf` -> `libx265`
-
-Quality control guidance:
-
-- `libx264` / `libx265`: use `-crf` and `-preset`.
-- `*_videotoolbox`: prefer bitrate-driven settings such as `-b:v`, `-maxrate`, `-bufsize`; avoid assuming `-crf` parity.
-- `*_nvenc`: prefer `-cq` or bitrate-driven settings with a preset.
-- `*_qsv` / `*_amf`: prefer bitrate-driven settings unless you have validated quality knobs for the local FFmpeg build.
-
-When portability matters more than speed, or when the chosen hardware encoder errors out, immediately fall back to `libx264`.
-
-## Command Templates
-
-Use variables:
-- `IN`, `IN1`, `IN2`, `OUT`, `START`, `END`, `FPS`, `W`, `H`, `VO`, `BGM`, `SUB`, `VENC`, `VBITRATE`, `VMAXRATE`, `VBUFSIZE`
-
-### 0) Encoder detection and selection
-
-Pick the first encoder that exists in `ffmpeg -hide_banner -encoders`:
+Use this ladder as the default starting point:
 
 ```text
-macOS H.264: h264_videotoolbox -> libx264
-Windows H.264: h264_nvenc -> h264_qsv -> h264_amf -> libx264
-macOS HEVC: hevc_videotoolbox -> libx265
-Windows HEVC: hevc_nvenc -> hevc_qsv -> hevc_amf -> libx265
+540p:  CRF 23, maxrate 1000k, bufsize 2000k, AAC 64k~96k
+720p:  CRF 22, maxrate 1800k, bufsize 3600k, AAC 96k
+1080p: CRF 21, maxrate 2800k, bufsize 5600k, AAC 96k~128k
 ```
 
-Do not force `-hwaccel auto` unless you have verified that the full pipeline works with the required filters.
+Selection:
 
-### 0.1) Hardware-accelerated web-safe export (generic pattern)
+- Short side `<= 540`: keep at most `540p`
+- Short side `<= 720`: keep at most `720p`
+- Short side `> 720`: default to `720p`; keep `1080p` only if detail matters
+- Hard upload limit: switch to 2-pass bitrate budgeting
+
+## Command Patterns
+
+Replace placeholders like `IN`, `OUT`, `W`, `H`, `FPS`, `CRF`, and bitrate values before running.
+
+### 1) Fast remux, no compression
 
 ```bash
-ffmpeg -y -i "IN" \
-  -c:v VENC -pix_fmt yuv420p -b:v VBITRATE -maxrate VMAXRATE -bufsize VBUFSIZE \
-  -c:a aac -b:a 192k -ar 48000 -ac 2 \
-  -map 0:v:0 -map 0:a? -movflags +faststart "OUT"
+ffmpeg -y -i "IN" -map 0:v:0 -map 0:a? -c copy -movflags +faststart "OUT"
 ```
 
-Examples:
-
-```text
-macOS:   VENC=h264_videotoolbox VBITRATE=6M VMAXRATE=8M VBUFSIZE=12M
-Windows: VENC=h264_nvenc        VBITRATE=6M VMAXRATE=8M VBUFSIZE=12M
-Fallback: switch to template 12 (`libx264`) if the encoder is unavailable or fails.
-```
-
-### 1) Fast trim (stream copy, keyframe aligned)
-
-```bash
-ffmpeg -y -ss START -to END -i "IN" -c copy -map 0:v:0 -map 0:a? -movflags +faststart "OUT"
-```
-
-### 2) Accurate trim (re-encode, frame accurate)
-
-```bash
-ffmpeg -y -ss START -to END -i "IN" \
-  -c:v libx264 -preset medium -crf 20 \
-  -c:a aac -b:a 192k \
-  -map 0:v:0 -map 0:a? -movflags +faststart "OUT"
-```
-
-### 3) Concat demuxer (same encoding parameters)
-
-Create `list.txt`:
-
-```text
-file '/abs/path/clip1.mp4'
-file '/abs/path/clip2.mp4'
-file '/abs/path/clip3.mp4'
-```
-
-Then:
-
-```bash
-ffmpeg -y -f concat -safe 0 -i "list.txt" -c copy -movflags +faststart "OUT"
-```
-
-### 4) Concat filter (mixed sources, robust path)
-
-```bash
-ffmpeg -y -i "IN1" -i "IN2" \
-  -filter_complex "[0:v]scale=W:H:force_original_aspect_ratio=decrease,pad=W:H:(ow-iw)/2:(oh-ih)/2[v0]; \
-                   [1:v]scale=W:H:force_original_aspect_ratio=decrease,pad=W:H:(ow-iw)/2:(oh-ih)/2[v1]; \
-                   [v0][0:a?][v1][1:a?]concat=n=2:v=1:a=1[v][a]" \
-  -map "[v]" -map "[a]" \
-  -c:v libx264 -preset medium -crf 21 \
-  -c:a aac -b:a 192k -movflags +faststart "OUT"
-```
-
-If optional audio concat fails, use template 8 (silence pad) first.
-
-### 5) Voiceover + BGM + source audio mix
-
-```bash
-ffmpeg -y -i "IN" -i "VO" -i "BGM" \
-  -filter_complex "[2:a]volume=0.25[bgm]; \
-                   [1:a]volume=1.00[vo]; \
-                   [0:a?][vo][bgm]amix=inputs=3:duration=longest:dropout_transition=2[mix]" \
-  -map 0:v:0 -map "[mix]" \
-  -c:v copy -c:a aac -b:a 192k -movflags +faststart "OUT"
-```
-
-If source has no audio, switch `[0:a?]` to silence source (template 8).
-
-### 6) Loudness-safe ducking (BGM under voice)
-
-```bash
-ffmpeg -y -i "VO" -i "BGM" \
-  -filter_complex "[1:a]volume=0.35,sidechaincompress=threshold=0.02:ratio=8:attack=20:release=300:makeup=1[bgmduck]; \
-                   [0:a][bgmduck]amix=inputs=2:duration=longest[mix]" \
-  -map "[mix]" -c:a aac -b:a 192k "OUT"
-```
-
-### 7) Normalize to target canvas (portrait/landscape safe pad)
-
-```bash
-ffmpeg -y -i "IN" \
-  -vf "scale=W:H:force_original_aspect_ratio=decrease,pad=W:H:(ow-iw)/2:(oh-ih)/2,setsar=1" \
-  -c:v libx264 -preset medium -crf 21 \
-  -c:a aac -b:a 192k -map 0:v:0 -map 0:a? -movflags +faststart "OUT"
-```
-
-### 8) Generate silence when audio missing
-
-```bash
-ffmpeg -y -i "IN" -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=48000 \
-  -shortest -map 0:v:0 -map 1:a:0 \
-  -c:v copy -c:a aac -b:a 128k -movflags +faststart "OUT"
-```
-
-### 9) VFR to CFR for timeline stability
-
-```bash
-ffmpeg -y -i "IN" \
-  -vf "fps=FPS" -r FPS \
-  -c:v libx264 -preset medium -crf 20 \
-  -c:a aac -b:a 192k -map 0:v:0 -map 0:a? -movflags +faststart "OUT"
-```
-
-### 10) Burn subtitles (hard subtitles)
-
-```bash
-ffmpeg -y -i "IN" -vf "subtitles='SUB'" \
-  -c:v libx264 -preset medium -crf 19 \
-  -c:a aac -b:a 192k -map 0:v:0 -map 0:a? -movflags +faststart "OUT"
-```
-
-### 11) Mux soft subtitles (selectable track)
-
-```bash
-ffmpeg -y -i "IN" -i "SUB.srt" \
-  -map 0:v:0 -map 0:a? -map 1:0 \
-  -c:v copy -c:a copy -c:s mov_text \
-  -metadata:s:s:0 language=chi -movflags +faststart "OUT"
-```
-
-### 12) Web-safe final export baseline
+### 2) Web-safe baseline export
 
 ```bash
 ffmpeg -y -i "IN" \
   -c:v libx264 -preset medium -crf 21 -pix_fmt yuv420p \
-  -c:a aac -b:a 192k -ar 48000 -ac 2 \
+  -c:a aac -b:a 128k -ar 48000 -ac 2 \
   -map 0:v:0 -map 0:a? -movflags +faststart "OUT"
 ```
 
-Use this as the deterministic software fallback on both macOS and Windows.
+### 3) Recommended WeChat-style compression
 
-## Error -> Fallback Playbook
+Default to `720p / 25fps / CRF 22 / maxrate 1800k / bufsize 3600k / AAC 96k` unless the source or budget says otherwise.
 
-### `matches no streams` / `Stream map ... matches no streams`
+```bash
+ffmpeg -y -i "IN" \
+  -vf "scale='min(W,iw)':'min(H,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2,pad=W:H:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=FPS" \
+  -c:v libx264 -preset slow -crf CRF -maxrate VMAXRATE -bufsize VBUFSIZE \
+  -pix_fmt yuv420p -c:a aac -b:a ABITRATE -ar 48000 -ac 2 \
+  -map 0:v:0 -map 0:a? -movflags +faststart "OUT"
+```
 
-- Cause: mapped audio stream absent.
-- Fix order:
-1. Replace `-map 0:a` with `-map 0:a?`.
-2. If downstream filter requires audio, inject silence with `anullsrc`.
+### 4) Hard file-size target with 2-pass H.264
 
-### `Non-monotonous DTS` / timestamp issues
+```text
+target_total_kbps = TARGET_MB * 8192 / DURATION
+target_video_kbps = target_total_kbps - audio_kbps - 32
+```
 
-- Cause: concat/timebase mismatch.
-- Fix order:
-1. Re-encode concat route (template 4), avoid copy concat.
-2. Add `-fflags +genpts` when needed.
+```bash
+ffmpeg -y -i "IN" \
+  -vf "scale='min(W,iw)':'min(H,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2,pad=W:H:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=FPS" \
+  -c:v libx264 -preset slow -b:v VBITRATE -maxrate VMAXRATE -bufsize VBUFSIZE \
+  -pix_fmt yuv420p -pass 1 -an -f mp4 /dev/null && \
+ffmpeg -y -i "IN" \
+  -vf "scale='min(W,iw)':'min(H,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2,pad=W:H:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=FPS" \
+  -c:v libx264 -preset slow -b:v VBITRATE -maxrate VMAXRATE -bufsize VBUFSIZE \
+  -pix_fmt yuv420p -pass 2 -c:a aac -b:a ABITRATE -ar 48000 -ac 2 \
+  -map 0:v:0 -map 0:a? -movflags +faststart "OUT"
+```
 
-### `concat` fails due to parameter mismatch
+On Windows, replace `/dev/null` with `NUL`.
 
-- Cause: resolution/fps/codec mismatch.
-- Fix order:
-1. Pre-normalize each clip to a mezzanine profile (`libx264 + aac`, same fps/resolution).
-2. Then concat demuxer or concat filter.
+### 5) Concat and normalize mixed clips
 
-### Hardware encoder unavailable / initialization failed
+- Matching streams: use concat demuxer + `-c copy`
+- Mixed sources: re-encode with concat filter after normalizing resolution/fps/audio
+- If any clip lacks audio, generate silence first
 
-- Cause: local FFmpeg build lacks the encoder, driver unavailable, remote session/VM limitations, unsupported pixel format, or encoder-specific option mismatch.
-- Fix order:
-1. Retry with the next encoder in the platform priority list.
-2. Remove any encoder-specific quality flags that do not apply to the new encoder.
-3. Fall back to `libx264` immediately if the job is urgent or portability matters more than speed.
+```bash
+ffmpeg -y -i "IN" -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=48000 \
+  -shortest -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 128k "OUT"
+```
 
-### Hardware decode/filter graph instability
+### 6) Subtitle handling
 
-- Cause: `-hwaccel` path does not cooperate with subtitles, scale/pad, concat filter, overlays, or mixed CPU filters.
-- Fix order:
-1. Drop explicit hardware decode.
-2. Keep software decode + filter graph on CPU.
-3. If available, still use hardware **encode** for the final output.
+Burn in:
 
-### Audio drift after long output
+```bash
+ffmpeg -y -i "IN" -vf "subtitles='SUB'" \
+  -c:v libx264 -preset medium -crf 19 \
+  -c:a aac -b:a 128k -map 0:v:0 -map 0:a? -movflags +faststart "OUT"
+```
 
-- Cause: VFR + mixed sources.
-- Fix order:
-1. Normalize main video to CFR first (template 9).
-2. Then mix audio.
+Soft subtitle mux:
 
-### Subtitle path parse failures
+```bash
+ffmpeg -y -i "IN" -i "SUB.srt" \
+  -map 0:v:0 -map 0:a? -map 1:0 \
+  -c:v copy -c:a copy -c:s mov_text -movflags +faststart "OUT"
+```
 
-- Cause: quoting/escaping on spaces or special chars.
-- Fix:
-1. Use absolute path.
-2. Quote path carefully in filter (`subtitles='...path...'`).
+## Quick Fallbacks
 
-## Output Contract (Always Return)
+- `matches no streams`: replace `-map 0:a` with `-map 0:a?`
+- Audio labels fail in `filter_complex`: do not use optional audio labels; pre-create silence
+- `concat` parameter mismatch: pre-normalize clips to the same resolution/fps/audio layout
+- Hardware encoder unavailable or output too large: fall back to `libx264`
+- Output still too large: reduce to `720p` before increasing `CRF`
+- VFR sync drift: normalize to CFR before audio mixing or concat
 
-After execution, return:
+## Encoder Defaults
 
-1. Exact command used (single-line and formatted block)
+- macOS: `h264_videotoolbox`, fallback `libx264`
+- Windows: `h264_nvenc`, then `h264_qsv`, then `h264_amf`, then `libx264`
+- Best compression efficiency: `libx264 -preset slow`
+- Best compatibility: `-pix_fmt yuv420p -movflags +faststart`
+
+## Output Contract
+
+Always return:
+
+1. Exact command used
 2. Output path
-3. Why key flags were chosen (`-map 0:a?`, `+faststart`, `crf`, `fps`, `scale/pad`)
-4. Any fallback applied and reason
+3. Chosen profile (`copy`, `web`, `540p`, `720p`, `1080p`, or `2-pass`)
+4. Why key flags were chosen
+5. Any fallback applied
 
-If re-encoding, also state:
+## Safety
 
-5. Which encoder was selected and why (`h264_videotoolbox`, `h264_nvenc`, `h264_qsv`, `h264_amf`, or `libx264`)
-6. Whether hardware decode was intentionally avoided for filter compatibility
-
-## Safety Constraints
-
-- Never overwrite source media in place.
-- Prefer deterministic absolute output paths.
-- Use `-y` only when overwrite is explicitly intended.
-- Respect external directory permissions before writing output.
-- For uncertain stream topology, probe first; do not guess.
-
-## Practical Defaults
-
-- Video encoder priority:
-  - macOS: `h264_videotoolbox`, fallback `libx264`
-  - Windows: `h264_nvenc`, fallback `h264_qsv`, then `h264_amf`, then `libx264`
-- Software video fallback: `libx264`, `preset=medium`, `crf=20~22`
-- Hardware H.264 starting point: `-b:v 6M -maxrate 8M -bufsize 12M`
-- Audio: `aac`, `192k`, `48kHz`, stereo
-- Web MP4: `-pix_fmt yuv420p -movflags +faststart`
-- Mixed source projects: re-encode path by default
+- Never overwrite source media in place
+- Prefer absolute output paths
+- Probe first when stream topology is uncertain
+- Do not claim “exactly WeChat internal compression”; call it compatibility-aligned
