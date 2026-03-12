@@ -189,14 +189,13 @@ ASR 工具（qwenasr）已启用说话人识别（diarization），SRT 输出中
 - Speaker C 在对话中仅出现 2 句，视觉分析中确认存在第三个角色
 ```
 
-> **重要**：文案撰写（步骤 5）必须使用 `characters.md` 中的人物称呼和关系描述，确保全片一致。
+> **重要**：步骤 5 导入或整理 `voiceover.md` 时，必须使用 `characters.md` 中的人物称呼和关系描述，确保全片一致。
 
 ## voiceover.md（解说文案）
 
 ```markdown
 # 解说文案
 
-- 风格：1 默认风格
 - 总段数：6
 - 预估总时长：58.2s
 
@@ -270,7 +269,6 @@ ASR 工具（qwenasr）已启用说话人识别（diarization），SRT 输出中
   "project": {
     "name": "项目名",
     "sources": ["/path/to/source1.mp4", "/path/to/source2.mp4"],
-    "style": 1,
     "created_at": "2026-02-27T10:00:00"
   },
   "progress": {

@@ -8,22 +8,26 @@
   },
   {
     "name": "drama-explainer",
-    "description": "短剧解说视频制作工作流。将短剧原片制作成解说与原片交替穿插的二创视频。",
+    "description": "短剧解说视频制作工作流。基于已确认文案完成分析、配音、画面匹配与成片拼接。",
     "files": [
       "drama-explainer/SKILL.md",
       "drama-explainer/references/file-formats.md",
       "drama-explainer/references/rendering.md",
-      "drama-explainer/references/scene-matching-guide.md",
-      "drama-explainer/references/styles/01-默认风格.md",
-      "drama-explainer/references/styles/02-口语化叙述.md",
-      "drama-explainer/references/styles/03-高能白话.md",
-      "drama-explainer/references/styles/04-引导式开头.md",
-      "drama-explainer/references/styles/05-吐槽式开头.md",
-      "drama-explainer/references/styles/06-深度解析.md",
-      "drama-explainer/references/styles/07-慢节奏.md",
-      "drama-explainer/references/styles/08-电影解密师.md",
-      "drama-explainer/references/styles/09-影视解说.md",
-      "drama-explainer/references/styles/10-短剧漫剧.md"
+      "drama-explainer/references/scene-matching-guide.md"
+    ]
+  },
+  {
+    "name": "drama-script-writer",
+    "description": "短剧、影视、悬疑剧情视频的解说文案创作 skill。根据字幕、剧情梗概、人物关系或视觉笔记撰写解说词，默认参考《豺狼的日子》样本风格。",
+    "files": [
+      "drama-script-writer/SKILL.md",
+      "drama-script-writer/references/style-notes.md",
+      "drama-script-writer/references/examples/豺狼的日子1.txt",
+      "drama-script-writer/references/examples/豺狼的日子2.txt",
+      "drama-script-writer/references/examples/豺狼的日子3.txt",
+      "drama-script-writer/references/examples/豺狼的日子4.txt",
+      "drama-script-writer/references/examples/豺狼的日子5.txt",
+      "drama-script-writer/references/examples/豺狼的日子6.txt"
     ]
   },
   {
