@@ -22,12 +22,19 @@
   },
   {
     "name": "drama-explainer",
-    "description": "短剧解说视频制作工作流。基于已确认文案完成分析、配音、画面匹配与成片拼接。",
+    "description": "短剧解说成片 skill。适用于短剧二创、剧情解说、狗血短剧混剪、情绪冲突型剧情拆解等场景；从原片分析剧情与人物，产出 `storyboard.json`、解说配音、画面匹配和最终成片，强调“保留原片最有戏的台词和表演，再用 VO 串联剧情”。",
     "files": [
       "drama-explainer/SKILL.md",
+      "drama-explainer/README.md",
       "drama-explainer/references/file-formats.md",
+      "drama-explainer/references/dramatic-editor-guide.md",
       "drama-explainer/references/rendering.md",
-      "drama-explainer/references/scene-matching-guide.md"
+      "drama-explainer/references/scene-matching-guide.md",
+      "drama-explainer/evals/evals.json",
+      "drama-explainer/evals/review-rubric.md",
+      "drama-explainer/evals/cases/conflict-case.md",
+      "drama-explainer/evals/cases/emotion-case.md",
+      "drama-explainer/evals/cases/reversal-case.md"
     ]
   },
   {
