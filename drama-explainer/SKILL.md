@@ -1,448 +1,331 @@
 ---
 name: drama-explainer
-description: 短剧解说视频制作工作流。将短剧原片制作成“解说配音 + 原片高代入感台词/表演”交替穿插的二创视频。核心功能：(1) ASR 提取对话字幕，(2) 全片视觉分析画面内容，(3) 校验剧情与人物关系，(4) 将已确认文案拆分为最终剪辑脚本（区分“解说配音”与“播放原片”），(5) 仅对解说配音段生成 TTS，(6) 批量匹配画面时间段并按段渲染，(7) 可选进入字幕分支并按横屏/竖屏选择对应字幕方案。触发场景：用户请求制作短剧解说成片、剧情解说二创、影视解说剪辑等类似内容。
+description: 制作“解说配音 + 原片高张力片段穿插”的短剧解说成片技能。适用于短剧二创、剧情解说、狗血短剧混剪、情绪冲突型剧情拆解、影视解说口播成片等场景；当用户希望从短剧原片直接产出可剪辑脚本、解说配音、分镜数据和最终成片时应触发。尤其适合“保留原片最有戏的台词和表演，再用解说串联剧情”的任务。不要在普通剧情总结、影评、纯文案改写、纯字幕烧录、普通视频剪切中使用本技能。
 ---
 
 # 短剧解说工作流
 
+## 核心定位
+
+这个 skill 不是“把剧情讲清楚”就结束的摘要器，而是一个**短剧解说成片编辑器**。
+
+它的核心任务是：
+- 先正确理解剧情、人物和情绪链条
+- 再从原片里挑出**最有表演张力、最有羞辱感、最有反击快感、最能立住人物**的原台词
+- 最后用克制的解说把这些高张力片段串成一条节奏清晰、代入感强的成片时间线
+
+如果最终结果只是“信息对了，但不好看、不够狠、没记忆点”，那就是失败。
+
+## 成功标准
+
+只有同时满足以下条件，才算成功：
+
+1. **剧情准确**：人物关系、关键事件、时序推进准确
+2. **戏眼命中**：真正最有戏的原片段被优先保留，而不是只选“能说明剧情”的台词
+3. **解说克制**：解说只负责铺垫、转场、补信息，不复述原片已经说清楚的内容
+4. **情绪完整**：成片保留关键情绪链条，例如：羞辱 → 反抗 → 落难 → 安慰 → 反转 → 站队
+5. **结构可执行**：`storyboard.json` 可直接用于配音、匹配、裁切、拼接
+
+## 失败信号
+
+出现以下任一情况，都说明 skill 执行失败，需要返工：
+
+- VO 文案充满空泛短视频腔，比如“命运”“站稳”“移不开眼”这类万能包装词，但缺少人物感
+- 选中了“能讲明白剧情”的原片，却漏掉了真正最有表演张力的片段
+- 只保留结果，不保留羞辱、反抗、护子、护妻、转折等关键戏眼
+- `original` 段的 `text` 写成摘要标签，而不是真正要展示的台词
+- 同一 source 时间乱跳却没有明确钩子前置策略
+- `voiceover` 紧挨着复述 `original` 刚说完的信息，造成“台词听两遍”
+
 ## 核心原则
 
-
-- **视觉优先理解剧情**：仅靠对话无法完整理解短剧，必须结合画面分析，才能为后续文案导入和画面匹配提供准确依据
-- **多源独立处理**：用户提供多个原片视频时，**不合并**，逐个独立执行 ASR、mediainfo、视觉分析
-- **校验先行**：视觉分析完成后，必须先校验剧情走向和人物关系，再进入文案导入与配音阶段
-- **人物关系建档**：人物关系独立存储为 `characters.md`，作为后续文案审核和画面匹配的统一参考
-- **文案外置**：解说文案创作已拆分到 `drama-script-writer`，本 skill 接收用户已确认的文案稿 / `voiceover.md` / 表格稿，并在步骤 5 整理成最终剪辑脚本
-- **最终剪辑脚本先行**：步骤 5 必须先把“文案稿”整理成 `final_script.md`，显式标出每段是“解说配音”还是“播放原片”
-- **原片台词优先**：凡是原片中已有表演力度、情绪张力或记忆点的台词，优先标记为“播放原片”，不要再让 TTS 复读一遍
-- **动态穿插节奏**：根据剧情节点动态决定每段解说和原片的时长，非固定比例
-- **按剧情时序匹配**：解说画面从当前剧情进度提取，不跨时间线
-- **音量控制**：`解说配音` 段使用原片静音画面并叠加 TTS，`播放原片` 段保留原声
-- **禁止凭空估算画面时间段**：画面匹配必须通过 `doubao-chat` subagent 基于视觉模型确定，禁止根据对话时间戳或剧情推测来猜测
-- **时间不重叠（强制约束）**：同一 `source_index` 下所有最终使用的 `video` 时间段绝对不能重叠。生成 `scene_matching.json` 后必须逐项验证无冲突
+- **视觉优先理解剧情**：仅靠对话无法完整理解短剧，必须结合画面分析
+- **校验先行**：人物关系和剧情理解未经校验，不得进入文案步骤
+- **文案分两步处理**：步骤 5 只写顺 `draft_script.md`；步骤 6 才做剪辑化编辑
+- **`storyboard.json` 为唯一真相源**：步骤 6 开始，所有分镜、音频、时间和输出状态都只回写它
+- **原片戏眼优先**：优先保留最有戏的原片，不优先保留最“完整”的原片
+- **VO 必须克制**：VO 不能抢原片的戏，不能把原片最强台词提前讲掉
+- **按情绪推进，不只按信息推进**：一条成片线必须同时考虑剧情信息和情绪抬升
+- **时间不重叠**：同一 `source_index` 下所有最终使用时间段不能重叠
+- **渲染只读 `storyboard.json`**：裁切、拼接、交接都不再依赖别的片段真相文件
 
 ## 工具清单
 
 | 阶段 | 工具 | 用途 |
 |------|------|------|
-| 提问 | `question` | 与用户交互确认 |
 | 分析 | `qwenasr` | 提取原片对话字幕和时间戳 |
 | 分析 | `mediainfo` | 获取视频元数据 |
-| 视觉 | `doubaovision` | **全片视觉分析**，理解整体剧情和画面内容 |
-| 匹配 | `doubao-chat` subagent | 多轮对话**精确匹配**解说文案与原片画面时间段 |
-| 生成 | `voiceover` | 解说文案转音频 |
-| 剪辑 | `trimvideo` | 截取视频片段 |
-| 合成 | `FFmpeg` | 多片段拼接渲染 |
+| 视觉 | `doubaovision` | 全片视觉分析，帮助理解剧情和场面强弱 |
+| 编辑 | subagent / TaskTool | 为步骤 6 派发专门的 dramatic editor 子任务 |
+| 匹配 | `doubao-chat` subagent | 为 `voiceover` 段匹配能承载情绪的画面 |
+| 生成 | `voiceover` | 生成解说音频 |
+| 剪辑 | `trimvideo` | 按分镜截取原片 |
+| 合成 | `FFmpeg` | 标准化、拼接、输出最终成片 |
 
 ## 项目目录结构
 
-```
+```text
 <项目名>/
-├── analysis/                # 步骤1-4产出：分析与校验结果
-│   ├── transcript.json      # ASR转录（单源）
-│   ├── transcript_01.json   # ASR转录（多源时按序编号）
-│   ├── transcript_02.json
-│   ├── mediainfo.json       # 视频元数据（单源）
-│   ├── mediainfo_01.json    # 视频元数据（多源时按序编号）
-│   ├── mediainfo_02.json
-│   ├── plot_analysis.md     # 剧情分析文档（三阶段更新：初步→视觉融合→校验确认）
-│   ├── visual_analysis.json # 视觉描述（单源）
-│   ├── visual_analysis_01.json # 视觉描述（多源时按序编号）
-│   ├── visual_analysis_02.json
-│   ├── characters.md        # 人物档案（步骤4产出，独立文件）
-│   └── scene_matching.json  # 画面匹配结果
-├── scripts/                 # 步骤5产出：最终剪辑脚本 + TTS 文案
-│   ├── final_script.md      # 最终剪辑脚本（逐段标明“解说配音 / 播放原片”）
-│   └── voiceover.md         # 仅保留需生成 TTS 的文案
-├── audio/                   # 步骤6产出：仅为“解说配音”段生成的配音音频
-│   ├── vo_01.mp3
-│   └── ...
-├── clips/                   # 步骤7-8产出：逐段视频片段
-│   ├── raw/                 # 按最终脚本逐段截取的原始片段
-│   └── merged/              # 标准化后片段（每段一个 merged_XXX.mp4）
-├── output/                  # 步骤9-10产出：最终成片 / 字幕版
-│   ├── output.mp4
-│   └── output_subtitled.mp4 # 可选，用户需要字幕时产出
-└── state.json               # 项目状态文件
+├── analysis/
+│   ├── transcript.json / transcript_01.json
+│   ├── mediainfo.json / mediainfo_01.json
+│   ├── visual_analysis.json / visual_analysis_01.json
+│   ├── plot_analysis.md
+│   ├── characters.md
+│   └── scene_matching.json          # 可选审查快照
+├── scripts/
+│   ├── draft_script.md
+│   ├── storyboard.json              # 唯一真相源
+│   ├── final_script.md              # 从 storyboard 派生的审查稿
+│   └── voiceover.md                 # 从 storyboard 派生的 TTS 稿
+├── audio/
+├── clips/
+│   ├── raw/
+│   └── merged/
+├── output/
+│   └── output.mp4
+└── state.json                       # 仅记录进度/运行状态
 ```
 
-> **多源文件命名规则**：单个原片时使用不带编号的文件名（如 `transcript.json`）；多个原片时按源文件顺序编号（如 `transcript_01.json`、`transcript_02.json`）。
+## 文件职责
 
-## 文件格式规范
-
-所有产出文件的 JSON/Markdown 结构定义详见 [references/file-formats.md](references/file-formats.md)，包含：
-
-| 文件 | 说明 |
+| 文件 | 角色 |
 |------|------|
-| `transcript.json` | ASR 转录，含说话人标识（A/B/C...） |
-| `mediainfo.json` | 视频元数据（时长/分辨率/帧率等） |
-| `plot_analysis.md` | 剧情分析（初步版 → 视觉融合版 → 校验确认版，三阶段更新） |
-| `characters.md` | **人物档案**（人物列表 + 关系图 + 关系变化） |
-| `final_script.md` | **最终剪辑脚本**（逐段标明是解说配音还是播放原片） |
-| `voiceover.md` | 仅保留需要生成 TTS 的解说文案 |
-| `visual_analysis.json` | 全片视觉描述（summary + scenes） |
-| `scene_matching.json` | 画面匹配结果（逐段 `play_mode` + `video` + match_reason） |
-| `state.json` | 项目状态跟踪（进度/片段/已用时间段） |
+| `draft_script.md` | 连续可读的原始解说稿，只负责把故事讲顺 |
+| `storyboard.json` | 分镜主数据，记录每段模式、素材来源、时间、文案、音频策略、状态 |
+| `final_script.md` | 从 `storyboard.json` 派生的人类审查稿 |
+| `voiceover.md` | 从 `storyboard.json` 派生的 TTS 文案稿 |
+| `scene_matching.json` | 步骤 8 的可选审查快照，不是新的真相源 |
+| `state.json` | 运行状态，不保存片段真相 |
 
 ## 工作流程
 
 ### 步骤 0：项目初始化
 
-本 skill 不负责从零撰写解说文案；开始前先确认用户是否已经准备好文案稿、`voiceover.md` 或等价的分段解说稿。
+1. 创建项目目录结构
+2. 初始化 `state.json`：只保存 `project`、`progress`、`last_error`
+3. 初始化 `scripts/storyboard.json`：先写空壳
+   - `project.name`
+   - `project.created_at`
+   - `sources`
+   - `draft_script_path = "scripts/draft_script.md"`
+   - `segments = []`
+   - `output.final_video = null`
 
-- 若用户**已经提供文案**：直接初始化项目并继续。
-- 若用户**还没有文案**：暂停本流程，先使用 `drama-script-writer` 完成文案创作或让用户手动提供。
-
-1. 创建项目目录结构：
-```bash
-mkdir -p <项目名>/{analysis,scripts,audio,clips/raw,clips/merged,output}
-```
-
-2. 写入 `<项目名>/state.json` 初始状态（格式详见 [references/file-formats.md](references/file-formats.md)）：
-   - `project.sources`：原片绝对路径数组
-   - `progress.steps`：所有步骤设为 `"pending"`
-   - `segments`：空数组
-   - `used_time_ranges`：按源文件数量初始化空数组
-
-**产出**：项目目录结构 + `state.json`（所有步骤 `pending`）
+**产出**：项目目录 + `state.json` + `scripts/storyboard.json`
 
 ### 步骤 1：分析原片
 
-对每个原片**独立**执行 ASR 和 mediainfo：
+对每个原片独立执行：
+- `qwenasr` → `analysis/transcript*.json`
+- `mediainfo` → `analysis/mediainfo*.json`
 
-```
-# 单源
-qwenasr(input_path=<原片>) → <项目名>/analysis/transcript.json
-mediainfo(path=<原片>) → <项目名>/analysis/mediainfo.json
+要求：
+- 多源不合并处理
+- transcript 必须保留时间戳和说话人标识
+- 将原片路径、字幕路径、transcript 路径、时长写入 `storyboard.json.sources[]`
 
-# 多源：逐个处理，按顺序编号
-qwenasr(input_path=<原片1>) → <项目名>/analysis/transcript_01.json
-mediainfo(path=<原片1>) → <项目名>/analysis/mediainfo_01.json
-qwenasr(input_path=<原片2>) → <项目名>/analysis/transcript_02.json
-mediainfo(path=<原片2>) → <项目名>/analysis/mediainfo_02.json
-...
-```
-
-ASR 输出的 SRT 已包含说话人标识（`[Speaker N]` 前缀），构建 `transcript.json` 时需解析前缀并映射为角色标识（A/B/C...）。
-
-> **多源注意**：不同视频中的同一角色可能被 ASR 识别为不同的 Speaker 编号。此时在步骤 4（校验）中统一修正。
-
-**产出**：`transcript.json` / `transcript_01.json` + `mediainfo.json` / `mediainfo_01.json`
-**状态更新**：`steps.1_analysis = "completed"`，`media` 字段填充
+**产出**：`transcript*.json`、`mediainfo*.json`
 
 ### 步骤 2：初步剧情分析
 
-根据 ASR 转录内容（如有多源则综合所有转录），识别故事背景、人物关系、剧情线划分（开场→冲突→转折→高潮→结局）。
+基于全部 transcript 梳理：
+- 人物关系
+- 剧情阶段
+- 关键冲突节点
+- 疑似高张力片段
 
-> **多源时**：按视频顺序拼接理解，注意不同视频间的剧情衔接。标注每段剧情来自哪个源文件。
+这一步只建立剧情骨架，不做最终选段决策。
 
-**产出**：`plot_analysis.md`（初步版本，基于对话）
-**状态更新**：`steps.2_plot_analysis = "completed"`
+**产出**：`analysis/plot_analysis.md`（初步版）
 
-### 步骤 3：视觉分析（每个原片 1 次调用）
+### 步骤 3：全片视觉分析
 
-步骤 3 只负责理解全片剧情，**不进行精确画面匹配**（精确匹配由步骤 7 完成）。
+每个原片只调用 1 次 `doubaovision`，目标不是精确匹配时间，而是回答：
+- 哪些地方真的有戏
+- 哪些地方只是信息说明
+- 哪些片段靠表情、停顿、场面就很能打人
 
-对**每个**原片视频调用 **1 次** `doubaovision`：
+必须输出：
+- 剧情整体视觉摘要
+- 高张力场景清单
+- 关键人物表情 / 肢体 / 场面变化
 
-```
-doubaovision(
-  file_path=<原片>,
-  fps=0.5,
-  max_tokens=4096,
-  prompt="请详细描述这个视频的完整内容。
-请包括：
-1. 故事背景和类型
-2. 主要人物的外貌、服装、性格特征
-3. 场景环境
-4. 剧情发展脉络（开场→冲突→转折→高潮→结局）
-5. 关键视觉细节（表情变化、肢体语言、重要道具）
-6. 情绪氛围和镜头语言
-请按时间顺序描述，标注每个场景的时间段。"
-)
-```
-
-- `fps=0.5`：2-3 分钟视频约采样 60-90 帧，足够理解剧情
-- **每个视频只调用 1 次**，无论时长多少
-
-**产出**：`visual_analysis.json` / `visual_analysis_01.json`, `visual_analysis_02.json`
-**状态更新**：`steps.3_visual_analysis = "completed"`
+**产出**：`visual_analysis*.json`
 
 ### 步骤 4：校验与人物建档
 
-> **此步骤会为后续文案审核、配音和画面匹配建立统一剧情基线。**
+将步骤 2 和步骤 3 交叉校验，产出统一剧情基线：
+- 修正人物身份、关系、时序和场景理解
+- 产出 `characters.md`
+- 覆盖更新 `plot_analysis.md`
 
-将步骤 2（对话分析）和步骤 3（视觉分析）的结果进行**交叉校验**，修正不准确的信息，并产出独立的人物档案文件。
+必须向用户展示：
+- 人物列表
+- 剧情五段式摘要
+- 可疑点 / 修正点
+
+用户确认无误后才能进入步骤 5。
+
+**产出**：`characters.md`、校验后的 `plot_analysis.md`
+
+### 步骤 5：创作解说文案初稿
 
-**输入**：`plot_analysis.md`（初步版）+ `visual_analysis.json` + 所有 `transcript.json`
+> 本步骤只做一件事：**把故事讲顺**。
 
-**校验清单**：
+基于 `plot_analysis.md` 和 `characters.md` 产出 `draft_script.md`。
 
-| 校验项 | 具体操作 |
-|--------|---------|
-| **人物身份匹配** | 将 Speaker A/B/C 与视觉分析中识别的人物外貌对应。确认每个 Speaker 是谁（姓名/称呼、外貌、身份） |
-| **人物关系准确性** | 交叉验证对话中暗示的关系（称呼、语气）与视觉中的互动（肢体语言、距离、表情）是否一致 |
-| **故事背景** | 对话中的背景线索（地点、时代、职业）与视觉场景是否吻合 |
-| **剧情走向** | 对话推断的剧情线与视觉呈现的实际画面是否匹配，是否存在仅靠对话无法理解的情节 |
-| **多源连贯性** | （多源时）不同视频间的角色是否同一人，剧情是否连贯衔接 |
+要求：
+- 可以略长，但必须顺
+- 不提前拆分 `mode`
+- 不提前写时间点
+- 不抢戏，不硬写“爽点文案”
+- 人物称呼和关键事件必须与 `characters.md` 一致
+
+禁止：
+- 直接写成最终剪辑稿
+- 提前决定所有 `original` / `voiceover`
+- 用夸张包装词替代真实人物状态
 
-**工作流程**：
+**产出**：`draft_script.md`
+
+### 步骤 6：dramatic editor 子任务 — 创建最终分镜脚本
+
+> 这是质量最高优先的核心步骤。
+
+主代理必须先准备最小上下文包：
+- `characters.md`
+- `plot_analysis.md`
+- `draft_script.md`
+- `transcript*.json` / 对应 SRT
+- 必要时补充 `visual_analysis*.json` 中的高张力场景摘要
 
-1. **逐项对比**：将 `plot_analysis.md` 中的每个要素与 `visual_analysis.json` 对照
-2. **修正差异**：发现不一致时，以视觉分析为准修正（画面是真实的，对话推断可能有误）
-3. **产出 `characters.md`**：将确认后的人物信息独立建档（格式详见 [references/file-formats.md](references/file-formats.md)）
-4. **更新 `plot_analysis.md`**：融合视觉信息后覆盖为「校验确认版」
+然后派发一个专门的 **dramatic editor** 子任务。这个子任务只做三件事：
+1. 挑出必须保留原声的原片段
+2. 压缩和重写 VO，使其只做铺垫 / 转场 / 补信息
+3. 产出完整 `storyboard.json`
 
-**产出**：
-- `characters.md`（人物档案，**独立文件**）
-- `plot_analysis.md`（校验确认版，覆盖初步版本）
+#### dramatic editor 的硬规则
 
-**⛔ STOP — 产出完成后必须停下，等用户确认后才能进入步骤 5。不要跳过。**
+- **钩子必须真钩人**：优先从后文最强冲突、最强反转、最强羞辱、最强护短场面里抽
+- **`original` 优先选最有戏的台词，不是最完整的台词**
+- **必须保留关键情绪链条**：如羞辱、反抗、护子、落难、安慰、表白、站队
+- **VO 只做三种功能**：铺垫、跳转、补信息
+- **VO 不得复述紧邻 `original` 已说明的内容**
+- **`original.text` 必须是真正要展示的台词**，不能写“婆婆羞辱儿媳”“男主公开护妻”这种摘要标签
+- 摘要说明如有必要，写入 `notes`
+- 同一 source 内若时间回跳，必须在 `notes` 标记 `hook_preposed=true`；否则默认按剧情顺序推进
 
-1. 先向用户输出以下摘要信息：
-   - 人物列表（姓名、身份、彼此关系，每人一行）
-   - 核心剧情走向（一句话概括每个阶段：开场→冲突→转折→高潮→结局）
-2. 然后调用 `AskUserQuestion` 工具：
-   - question: `"以上人物关系和剧情理解是否正确？"`
-   - header: `"剧情校验"`
-   - options:
-     - `"确认无误"` — 人物关系和剧情理解正确，继续导入文案
-     - `"需要修正"` — 有错误需要修改，我会在下方说明具体问题
-3. 用户选择「需要修正」时，根据反馈修正 `characters.md` 和 `plot_analysis.md`，修正后**重新展示并再次提问**，直到用户选择「确认无误」。
+#### 步骤 6 的失败判定
+
+以下任一命中，必须返工：
+- `original.text` 明显是摘要而不是真实台词
+- 缺失最关键的羞辱 / 反抗 / 反转 / 护妻 / 护子场面
+- VO 中出现空泛大词：如“命运”“站稳”“移不开眼”“退路”等万能包装词，但没有人物感
+- 原片最有戏的句子被改成 VO，导致原台词没被听到
+- 选段只是“能说明剧情”，而不是“最有戏”
+
+#### `storyboard.json` 在步骤 6 的最低要求
+
+每个 segment 至少包含：
+- `id`
+- `title`
+- `mode`：`voiceover` / `original`
+- `source_index`
+- `source_path`
+- `start`
+- `end`
+- `text`
+- `text_raw`
+- `mute_original`
+- `status`
+- `notes`
+
+额外要求：
+- `original` 段在步骤 6 就必须有精确 `start/end` 和 `text_raw`
+- `voiceover` 段允许先无时间，但必须有成型 `text`
+- 每个 segment 的 `notes` 必须解释：为什么留原声 / 为什么此处必须 VO
+
+#### 派生文件
+
+步骤 6 完成后：
+- 从 `storyboard.json` 派生 `final_script.md`
+- 从 `storyboard.json` 里所有 `mode = voiceover` 的段落派生 `voiceover.md`
+
+**产出**：`storyboard.json`、`final_script.md`、`voiceover.md`
+
+### 步骤 7：生成解说音频
+
+只对 `mode = voiceover` 的段落生成音频。
 
-**状态更新**：用户确认后 `steps.4_verification = "completed"`
+回写：
+- `storyboard.json.segments[].audio_file`
+- `storyboard.json.segments[].audio_duration_sec`
+- `voiceover.md` 的对应音频时长
 
-### 步骤 5：导入并确认解说文案
+禁止：
+- 给 `original` 段生成空音频
+- 让 `voiceover.md` 和 `storyboard.json` 漂移
 
-本 skill 不负责从零创作文案，但**必须**把用户提供的文案整理成“最终可执行剪辑脚本”。
+### 步骤 8：画面匹配（仅匹配 `voiceover` 段）
 
-**输入**：用户提供的 `voiceover.md`、表格稿、纯文本分段稿，或由 `drama-script-writer` 产出的最终文案
+> 必须使用 `doubao-chat` subagent。
 
-**本步骤必须同时产出 2 份文件**：
-1. `scripts/final_script.md`：最终剪辑脚本，逐段标明 `play_mode`
-   - `解说配音`：需要生成 TTS
-   - `播放原片`：直接使用原片音画或至少保留原声，不生成 TTS
-2. `scripts/voiceover.md`：**仅保留 `play_mode=解说配音` 的段落**，供步骤 6 生成配音
+这一步不再负责剧情编辑决策，只负责：
+- 为所有 `voiceover` 段找能承载该段解说的画面
+- 时间必须覆盖 `audio_duration_sec`
+- 匹配理由必须体现**情绪承载作用**，不是只写“画面相关”
 
-**拆分规则（关键）**：
-- 每段先判断它属于“解说配音”还是“播放原片”，不要把二者混在一段里
-- **人物称呼必须与 `characters.md` 一致**，不要出现歧义或前后不一致的称呼
-- **人物关系描述必须与 `characters.md` 一致**，防止偏题
-- 涉及画面动作、情绪、关系的表述不能与 `plot_analysis.md` 和 `visual_analysis.json` 冲突
-- **原片中已存在的高张力台词，优先改为 `播放原片`**，不要在 TTS 里重复朗读一遍
-- 出现以下情况时，必须优先拆成“铺垫解说 + 原片台词”两段：
-  - 文案里出现引号、冒号、破折号引出原话
-  - 文案在描述“某人当着全家人的面说/骂/喊/质问/摊牌”等，且原片中确有对应对白
-  - 原片表演本身比复述更有代入感
-- **多源时**：每段需标注 `source_index`（从 1 开始），指明该段画面来自哪个原片
+匹配要求：
+- 优先匹配有表情、动作、关系 tension 的画面
+- 不要匹配纯信息说明性画面，除非别无选择
+- 与同一 source 其他时间段不能重叠
+- 匹配结果回写 `storyboard.json`
+- 可选导出 `analysis/scene_matching.json` 作为审查快照
 
-**示例（必须按这种思路拆）**：
+### 步骤 9：按 `storyboard.json` 逐段渲染
 
-```markdown
-| 段落 | 播放方式 | 文案/台词 | 对应视频 | 预估时长 | 备注 |
-|------|----------|-----------|---------|---------|------|
-| 15 | 解说配音 | 回到娘家，怀孕的嫂子当着全家人的面说—— | 1 | 4秒 | 用解说铺垫冲突 |
-| 16 | 播放原片 | 房子这么小，小姑子带个拖油瓶回来，挤得我胎都不稳了。 | 1 | 6秒 | 直接使用原片表演和原声，不生成 TTS |
-```
+按 `storyboard.json` 顺序逐段：
+- `trimvideo` 截取原片
+- `voiceover` 段：静音原声并叠加 TTS
+- `original` 段：保留原声
+- 统一分辨率、帧率、像素格式、音频格式
+- 输出到 `clips/merged/`
 
-**产出**：`final_script.md` + `voiceover.md`
+### 步骤 10：拼接输出最终成片
 
-**⛔ STOP — 文案整理完成后必须停下，等用户确认后才能进入步骤 6。不要跳过。**
+使用 FFmpeg concat demuxer 无损拼接 `clips/merged/*.mp4`。
 
-1. 向用户展示整理后的 `final_script.md`，并说明：总段数、其中 `解说配音` 段数、`播放原片` 段数、预估总时长。
-2. 同时展示派生后的 `voiceover.md`，让用户确认哪些段会生成 TTS、哪些段会直接播放原片。
-3. 若用户要求改写语气、重写段落或补全缺失内容，停止本 skill 的后续步骤，改用 `drama-script-writer` 处理文案。
-4. 用户确认无误后，再进入配音阶段。
+回写：
+- `storyboard.json.output.final_video`
+- 各 segment 的最终状态
 
-**状态更新**：用户确认满意后 `steps.5_script = "completed"`
+### 步骤 11：字幕确认与交接（可选）
 
-### 步骤 6：生成解说音频
+如用户需要字幕，交接给专门字幕 skill，并携带：
+- `output/output.mp4`
+- `scripts/final_script.md`
+- `scripts/storyboard.json`
 
-```
-voiceover(text=<文案>, provider=free, speed=1.0, output_path=<项目名>/audio/vo_01.mp3)
-```
+## 质量检查清单
 
-仅对 `final_script.md` 中 `play_mode = 解说配音` 的段落逐段生成，`播放原片` 段**跳过**，不要生成空音频。
-
-- `voiceover.md` 中每一行必须保留 `final_segment` 字段，便于回写到最终脚本
-- 记录实际音频时长，回填到 `voiceover.md`、`final_script.md` 和 `state.json`
-- `播放原片` 段在 `state.json` 中标记 `needs_tts = false`
-
-**产出**：`vo_01.mp3`, `vo_02.mp3`, ...
-**状态更新**：`steps.6_audio = "completed"`，`segments[].audio_duration` 填充实际时长（仅 `解说配音` 段有值）
-
-### 步骤 7：画面匹配（必须使用 doubao-chat subagent）
-
-> **必须调用 `doubao-chat` subagent 完成画面匹配，禁止手动估算时间段。**
-
-通过 `doubao-chat` subagent 与豆包视觉模型多轮对话，按 `final_script.md` 的**最终段落顺序**逐段匹配每段对应的画面时间段。匹配完成后**必须验证时间不重叠**。
-
-**匹配目标**：
-- `解说配音` 段：找一段能承载该段解说的画面，`video` 时长必须覆盖该段 `audio_duration`
-- `播放原片` 段：找出原片中该句台词/该段表演实际发生的时间段，保留原声，优先确保台词完整与表演完整
-
-> **多源时**：`scene_matching.json` 中每个 segment 需包含 `source_index` 字段，指明画面来自哪个原片。对每个原片独立调用 doubao-chat subagent 完成该片的画面匹配。
-
-详细的 subagent prompt 模板、匹配规则和校验流程见 [references/scene-matching-guide.md](references/scene-matching-guide.md)。
-
-**产出**：`scene_matching.json`
-
-**⚠️ 验证时间不重叠（必须执行）**：生成 `scene_matching.json` 后，逐项检查以下规则，全部通过才能继续：
-
-1. **段落完整**：每个最终段落都必须有一条匹配结果，禁止漏段
-2. **同源全局**：同一 `source_index` 下所有 `video` 时间段按 start 排序后，前一段的 end 不能超过后一段的 start
-3. **时间边界**：所有时间段的 start >= 0 且 end <= 该源视频总时长
-4. **音频时长保障**：每个 `解说配音` 段的 `video` 时长必须 >= `audio_duration`。不满足时执行「音频超长修复流程」（详见 [references/scene-matching-guide.md](references/scene-matching-guide.md)）：无重叠冲突则延长 `video`，有冲突则重写该段文案并重新生成音频
-5. **原台词完整**：每个 `播放原片` 段必须覆盖该句关键台词或关键表演的完整起止，不能只截半句
-
-发现冲突时：向后偏移冲突段的起始时间，修正后重新验证。
-
-**状态更新**：`steps.7_matching = "completed"`
-
-### 步骤 8：截取视频与标准化合并
-
-> **⚠️ 本步骤包含 2 个阶段：阶段 A（截取）和阶段 B（标准化合并）。阶段 B 是确保音视频格式统一和解说音频不丢失的关键步骤，不可跳过。**
-> **⚠️ 不要使用 `rendervideo` 工具做最终渲染，它的 timeline 格式不支持解说配音叠加，会导致成片无解说音频。必须使用 FFmpeg 手动渲染。**
-
-> **多源时**：每个 segment 的 `source_index` 指明从哪个原片截取，从 `state.json` 的 `project.sources` 数组中取对应路径。
-
-**阶段 A — 按最终脚本逐段截取**：根据 `scene_matching.json`，每个最终段落只截取 **1 个** 原始片段：
-
-```
-trimvideo(input_path=<原片[source_index]>, start=<video.start>, end=<video.end>,
-          output_path=<项目名>/clips/raw/clip_015.mp4)
-```
-
-**阶段 B — 标准化与合并（关键步骤）**：将所有片段统一为相同的视频参数（分辨率、帧率、像素格式、音频格式），并按 `play_mode` 决定音频来源，为步骤 9 的无损拼接做准备。
-
-> **参数来源**：从 `mediainfo.json` 读取源视频的分辨率（`SRC_RES`，如 `1920:1080`）和帧率（`SRC_FPS`，如 `30`），确保输出与原片一致。不要硬编码 fps=25。
-
-**B1 — `解说配音` 段**：标准化视频 + 用配音替换原声：
-
-```bash
-ffmpeg -y -i <项目名>/clips/raw/clip_015.mp4 \
-  -i <项目名>/audio/vo_015.mp3 \
-  -filter_complex "\
-    [0:v]fps=<SRC_FPS>,scale=<SRC_RES>:force_original_aspect_ratio=decrease,\
-    pad=<SRC_RES>:-1:-1,format=yuv420p[v]; \
-    [1:a]aformat=sample_rates=44100:channel_layouts=stereo[a]" \
-  -map "[v]" -map "[a]" \
-  -c:v libx264 -preset fast -crf 23 \
-  -c:a aac -b:a 128k -shortest \
-  <项目名>/clips/merged/merged_015.mp4
-```
-
-**B2 — `播放原片` 段**：标准化视频 + 保留原声：
-
-```bash
-ffmpeg -y -i <项目名>/clips/raw/clip_016.mp4 \
-  -filter_complex "\
-    [0:v]fps=<SRC_FPS>,scale=<SRC_RES>:force_original_aspect_ratio=decrease,\
-    pad=<SRC_RES>:-1:-1,format=yuv420p[v]; \
-    [0:a]aformat=sample_rates=44100:channel_layouts=stereo[a]" \
-  -map "[v]" -map "[a]" \
-  -c:v libx264 -preset fast -crf 23 \
-  -c:a aac -b:a 128k \
-  <项目名>/clips/merged/merged_016.mp4
-```
-
-> 如果 `播放原片` 段没有音频轨道，用 `anullsrc` 生成静音轨：将 `[0:a]aformat=...` 替换为 `anullsrc=r=44100:cl=stereo[a]`。
-
-**产出**：
-- `clips/raw/clip_*.mp4` — 按最终脚本逐段截取的原始片段
-- `clips/merged/merged_*.mp4` — **标准化后的最终片段**（每段一个文件；TTS 段含配音，原片段含原声）
-
-**状态更新**：`steps.8_clips = "completed"`，`segments[].status = "merged"`
-
-### 步骤 9：拼接渲染成片
-
-> **⚠️ 拼接时只使用阶段 B 产出的 `merged_*.mp4`，不要直接使用 `clips/raw/` 中的原始截取文件。**
-
-所有片段已在步骤 8 阶段 B 标准化为相同格式，使用 FFmpeg **concat demuxer** 无损拼接（`-c copy`，无需重新编码）。
-
-**第一步 — 生成文件列表**：
-
-```bash
-cat > <项目名>/filelist.txt << 'EOF'
-file 'clips/merged/merged_015.mp4'
-file 'clips/merged/merged_016.mp4'
-file 'clips/merged/merged_017.mp4'
-file 'clips/merged/merged_018.mp4'
-...
-EOF
-```
-
-**第二步 — 无损拼接**：
-
-```bash
-ffmpeg -y -f concat -safe 0 -i <项目名>/filelist.txt \
-  -c copy \
-  -movflags +faststart \
-  <项目名>/output/output.mp4
-```
-
-**关键点**：
-- **concat demuxer + `-c copy`**：步骤 8 已统一所有片段的编解码参数，此处直接流复制，速度极快且无质量损失
-- **`-movflags +faststart`**：将 MP4 元数据前置，支持网络播放时边下载边播放
-- **不要使用 `adelay` + `amix`**，会导致后半部分音画不同步
-- **不要使用 concat filter**：已无必要重新编码，且输入数量多时 filter_complex 会过于复杂
-
-完整的 FFmpeg 参数细节见 [references/rendering.md](references/rendering.md)。
-
-**产出**：`output/output.mp4` — 最终成片
-**状态更新**：`steps.9_render = "completed"`
-
-### 步骤 10：字幕确认与分支（可选）
-
-渲染完成后，**必须先问用户要不要字幕**，不要默认跳过，也不要默认强烧。
-
-1. 读取首个源视频或最终输出的视频尺寸：
-   - `height > width` → `orientation = portrait`（竖屏）
-   - `width >= height` → `orientation = landscape`（横屏）
-2. 明确询问用户：是否需要给最终成片增加字幕。
-3. 若用户不需要字幕：直接交付 `output/output.mp4`。
-4. 若用户需要字幕：
-   - 将 `orientation`、`output/output.mp4`、`scripts/final_script.md`、`analysis/scene_matching.json` 作为输入，交给后续专门的字幕 skill
-   - **不要在本 skill 内拍脑袋决定字幕样式或强行硬编码字幕位置**
-   - 若当前环境还没有对应字幕 skill，则停下并把上述输入信息整理给用户，等待字幕 skill 接手
-
-**状态更新**：
-- 用户不要字幕：`steps.10_subtitles = "skipped"`
-- 用户需要字幕且已交接：`steps.10_subtitles = "completed"`
+- [ ] `draft_script.md` 读起来顺，不是最终剪辑稿
+- [ ] `storyboard.json` 是唯一真相源
+- [ ] `original.text` 都是真实展示台词，不是摘要标签
+- [ ] 最有戏的原片台词被优先保留
+- [ ] `voiceover` 没有复述紧邻 `original` 已说清的内容
+- [ ] 保留了完整情绪链条，而不是只保留结果
+- [ ] 同一 source 时间顺序合理；如有回跳，`notes` 明确说明是钩子前置
+- [ ] `voiceover.md` 与 `storyboard.json` 一一对应
+- [ ] 裁切、拼接、交接都只读取 `storyboard.json`
 
 ## 常见问题
 
-| 问题 | 解决方案 |
-|------|----------|
-| 导入文案与剧情不符 | 回看步骤 3 和步骤 4 的结果，按 `plot_analysis.md`、`visual_analysis.json`、`characters.md` 重新校正文案后再继续 |
-| 人物称呼不一致 | 检查 `characters.md` 是否准确建档，并在 `voiceover.md` 中统一修正称呼 |
-| 人物关系错误导致剧情偏题 | 步骤 4 校验不充分，需重新交叉验证对话与视觉分析 |
-| 多个视频中同一角色识别为不同 Speaker | 在步骤 4 中统一修正 Speaker 映射 |
-| 步骤 3 调用多次 doubaovision | 步骤 3 每个视频只需 1 次全片分析，精确匹配由步骤 7 完成 |
-| 台词听了两遍，代入感差 | 步骤 5 没有先拆成 `final_script.md`。原片已有情绪张力的台词必须标记为 `播放原片`，不要再生成 TTS |
-| 画面时长不足 | 步骤 7「音频超长修复流程」自动处理：无重叠冲突时延长 `video`，有冲突时自动重写该段文案并重新生成音频。禁止通过 `-shortest` 截断音频 |
-| 画面时间段重叠 | 按步骤 7 的验证规则逐项检查，冲突时向后偏移起始点 |
-| **成片无解说音频** | **步骤 8 阶段 B 被跳过。必须先 FFmpeg 标准化合并每个最终段落：`解说配音` 段输出 `merged_*.mp4`（含 TTS），`播放原片` 段输出 `merged_*.mp4`（含原声），步骤 9 拼接时只用 `clips/merged/` 下的文件。不要用 rendervideo 工具或 timeline.json 渲染** |
-| 后半部分音画不同步 | 步骤 8 阶段 B 统一所有片段格式，步骤 9 用 concat demuxer 无损拼接 |
-| 音频格式不兼容 | 步骤 8 阶段 B 用 `aformat` 滤镜统一为 `stereo/44100Hz`，步骤 9 无需再处理 |
-| 最终视频没有字幕 | 步骤 10 被跳过。渲染后必须先询问用户是否需要字幕；需要时先判断横屏/竖屏，再交给对应字幕 skill |
-| 衔接生硬 / 节奏拖沓 | 优先检查导入文案的分段是否过长，再调整原片片段选择 |
-
-## 质量检查
-
-- [ ] 步骤 4 完成校验，`characters.md` 已建档且人物关系准确
-- [ ] `final_script.md` 中每段都已标明 `解说配音 / 播放原片`
-- [ ] 原片已有高张力台词的段落未被 TTS 复读，已改为 `播放原片`
-- [ ] `voiceover.md` 仅包含需要生成 TTS 的段落，且人物称呼与 `characters.md` 一致
-- [ ] 步骤 7 通过 `doubao-chat` subagent 完成画面匹配（非手动估算）
-- [ ] 导入文案的内容与视频画面实际发生的事匹配
-- [ ] 步骤 3 每个视频调用 1 次 `doubaovision` 完成全片视觉理解
-- [ ] 解说与原片穿插自然，无画面重复使用
-- [ ] 步骤 8 阶段 B 已执行：每个最终段落都产出一个 `merged_*.mp4`，TTS 段含配音，原片段含原声，所有片段格式统一
-- [ ] 步骤 9 拼接使用 `clips/merged/` 目录下的标准化文件，非 `clips/raw/`
-- [ ] 所有片段分辨率、帧率与原片一致（从 mediainfo.json 读取，非硬编码）
-- [ ] 音画同步，音频格式统一（44100Hz stereo），输出含 `+faststart`
-- [ ] 目录结构完整，`state.json` 所有步骤 completed
-- [ ] 已询问用户是否需要字幕；若需要，已根据横屏/竖屏进入对应字幕分支
-- [ ] **scene_matching.json 时间冲突验证通过（步骤 7 验证规则）**
-- [ ] （多源时）各源文件独立分析，未合并处理
+| 问题 | 根因 | 修正方式 |
+|------|------|---------|
+| 成片信息对了但不好看 | 只做了剧情摘要，没有做编辑决策 | 回到步骤 6，重挑原片戏眼 |
+| 台词听了两遍 | VO 复述了原片已表达内容 | 压缩 VO，只保留铺垫和转场 |
+| 原片都是真实台词但还是不够打人 | 选中了“说明剧情”的台词，而不是“最有戏”的台词 | 重新查看视觉分析和 transcript，高张力优先 |
+| `storyboard.json` 审不动 | `original.text` 写成摘要标签 | 改成真实展示台词，摘要写 `notes` |
+| 同一 source 时间跳来跳去很乱 | 没区分钩子前置和正常顺序 | 默认按剧情顺序；只有钩子允许前置且必须标记 |
+| 成片没有人物感 | VO 用了空泛短视频模板句 | 重写 VO，改成更贴人物、更贴处境的句子 |

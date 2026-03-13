@@ -1,0 +1,47 @@
+{
+  "skill_name": "drama-explainer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "基于给定的短剧 transcript、人物档案和初稿，产出高代入感的 storyboard.json，并派生 final_script.md 与 voiceover.md。重点保留婆家羞辱、护子、掀桌这些强冲突戏眼。",
+      "expected_output": "storyboard 里保留真正最有戏的原台词，VO 只做铺垫和跳转，情绪链条完整。",
+      "files": [
+        "evals/cases/conflict-case.md"
+      ],
+      "expectations": [
+        "`storyboard.json` 中至少有一个 `original` 段直接保留羞辱性原台词，而不是摘要标签。",
+        "VO 不重复解释紧邻 `original` 已经说清楚的冲突信息。",
+        "输出保留了‘羞辱 -> 反抗 -> 掀桌’的情绪链条。",
+        "`original.text` 是真实展示台词，不是‘婆家羞辱儿媳’这类摘要。"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "基于给定材料，为一段母子落难、孩子安慰母亲、男主追来求婚的剧情创建 storyboard。重点考察是否保留最能打人的情绪片段，而不是只保留求婚结果。",
+      "expected_output": "storyboard 保留孩子安慰母亲和求婚关键对答，避免把最有戏的段落压成摘要。",
+      "files": [
+        "evals/cases/emotion-case.md"
+      ],
+      "expectations": [
+        "输出保留‘落难 -> 安慰 -> 求婚’的完整情绪链条。",
+        "没有只保留‘我想跟你结婚’而漏掉后续更有戏的问答。",
+        "VO 语言不过度模板化，没有明显空泛包装句。",
+        "若存在钩子前置，`notes` 中有明确说明。"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "基于婚宴羞辱与公开站队材料，产出 storyboard。重点考察是否保留羞辱铺垫与公开护妻的反击快感，而不是只保留结果。",
+      "expected_output": "storyboard 既保留婚宴上的羞辱铺垫，也保留最终公开站队的高光段。",
+      "files": [
+        "evals/cases/reversal-case.md"
+      ],
+      "expectations": [
+        "输出同时保留羞辱铺垫和公开站队，而不是只保留结果。",
+        "原片最强戏眼被标为 `original`。",
+        "`final_script.md` 与 `voiceover.md` 均可由 `storyboard.json` 一致派生。",
+        "整体节奏呈现‘压迫 -> 反击’而不是平铺直叙。"
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
-# 文件格式规范
+# 文件格式规范与质量约束
 
-本文档定义项目中所有产出文件的结构和格式。
+本文档定义 `drama-explainer` 中关键文件的结构、字段语义、质量约束和常见错误。
 
 ## 多源文件命名规则
 
@@ -11,370 +11,231 @@
 | ASR 转录 | `transcript.json` | `transcript_01.json`, `transcript_02.json`, ... |
 | 视频元数据 | `mediainfo.json` | `mediainfo_01.json`, `mediainfo_02.json`, ... |
 | 视觉描述 | `visual_analysis.json` | `visual_analysis_01.json`, `visual_analysis_02.json`, ... |
-| 剧情分析 | `plot_analysis.md` | `plot_analysis.md`（综合所有源） |
-| 人物档案 | `characters.md` | `characters.md`（综合所有源） |
-| 画面匹配 | `scene_matching.json` | `scene_matching.json`（含 `source_index` 字段） |
+| 剧情分析 | `plot_analysis.md` | `plot_analysis.md` |
+| 人物档案 | `characters.md` | `characters.md` |
+| 原始文案 | `draft_script.md` | `draft_script.md` |
+| 分镜主数据 | `storyboard.json` | `storyboard.json` |
+| 匹配快照 | `scene_matching.json` | `scene_matching.json` |
 
-## transcript.json（ASR 转录）
+## `draft_script.md`
 
-ASR 工具（qwenasr）已启用说话人识别（diarization），SRT 输出中每句话带有 `[Speaker N]` 前缀。
-构建 transcript.json 时，从 SRT 前缀中提取 speaker 编号，映射为 "A"/"B"/"C" 等角色标识。
+作用：只把故事讲顺，为步骤 6 提供删改底稿。
 
-```json
-{
-  "source": "source.mp4",
-  "language": "zh",
-  "segments": [
-    {"start": 0.0, "end": 2.5, "text": "你怎么来了？", "speaker": "A"},
-    {"start": 3.1, "end": 5.8, "text": "我来找你谈谈。", "speaker": "B"}
-  ]
-}
-```
+### 正例特点
+- 读起来顺
+- 情绪线完整
+- 人物称呼一致
+- 不提前拆 `mode`
 
-> **Speaker 映射规则**：SRT 中 `[Speaker 0]` → `"A"`，`[Speaker 1]` → `"B"`，依此类推。
+### 反例特点
+- 提前写时间戳
+- 提前决定全部 `original` / `voiceover`
+- 用万能包装句代替人物处境
+- 读起来像短视频成片，而不是底稿
 
-> **多源注意**：不同视频中的同一角色可能被 ASR 识别为不同的 Speaker 编号。在步骤 4（校验与人物建档）中统一修正。
+## `storyboard.json`
 
-## mediainfo.json（视频元数据）
+这是唯一真相源。所有音频、匹配、裁切、拼接都只读取它。
 
-```json
-{
-  "duration": 180.5,
-  "width": 1080,
-  "height": 1920,
-  "fps": 25,
-  "codec": "h264",
-  "audio_channels": 2,
-  "audio_sample_rate": 44100
-}
-```
-
-## plot_analysis.md（剧情分析）
-
-此文件经历**三次**更新：
-1. **步骤 2 产出初步版本**（基于对话），梳理剧情骨架和人物关系
-2. **步骤 4 校验后更新为确认版本**（基于对话+视觉交叉验证），修正不准确信息
-3. 后续步骤如有需要可微调
-
-**初步版本（步骤 2 产出）**：
-
-```markdown
-# 剧情分析（初步 — 基于对话）
-
-## 基本信息
-- 片名：xxx
-- 时长：3 分钟
-- 类型：都市情感
-- 源文件数量：1
-
-## 人物关系
-- Speaker A（男主）：语气强势，疑似公司高管
-- Speaker B（女主）：语气倔强，与 A 存在冲突
-
-## 剧情线
-1. **开场**（00:00-00:30）：A 和 B 在办公室初次见面
-2. **冲突**（00:30-01:30）：因项目争执，A 说"你根本不懂"
-3. **转折**（01:30-02:00）：对话断层，疑似闪回
-4. **高潮**（02:00-02:30）：B 发现 A 的秘密
-5. **结局**（02:30-03:00）：两人和解
-```
-
-**校验确认版（步骤 4 覆盖）**：在初步版本基础上融合视觉信息，修正人物身份和关系，补充人物外貌、场景细节、关键视觉线索，并新增「关键场景」表格（时间/场景/情绪/重要程度）。标注校验修正项。
-
-```markdown
-# 剧情分析（校验确认版 — 对话+视觉交叉验证）
-
-## 基本信息
-- 片名：xxx
-- 时长：3 分钟
-- 类型：都市情感
-- 源文件数量：1
-
-## 校验修正记录
-- [修正] Speaker A 初步判断为"公司高管"，视觉确认为"律师"（穿西装、手持卷宗）
-- [修正] A 和 B 关系初步判断为"同事"，视觉确认为"前夫妻"（有婚戒特写）
-- [补充] 仅靠对话无法理解的闪回片段：01:30处为回忆场景（画面色调变暖）
-
-## 人物关系
-详见 characters.md
-
-## 剧情线
-1. **开场**（00:00-00:30）：陈明（A）走进律师事务所，遇到前妻林雪（B）
-   - 视觉：办公室环境，两人对视后尴尬别过头
-2. **冲突**（00:30-01:30）：因财产分割争执
-   - 视觉：林雪拍桌站起，陈明捏紧拳头
-3. **转折**（01:30-02:00）：闪回婚礼场景
-   - 视觉：画面色调变暖，两人穿婚纱和西装
-4. **高潮**（02:00-02:30）：林雪发现陈明隐藏的离婚真相
-   - 视觉：特写信件内容，林雪流泪
-5. **结局**（02:30-03:00）：两人释然握手
-   - 视觉：逆光镜头，背影渐远
-
-## 关键场景
-| 时间 | 场景 | 情绪 | 重要程度 |
-|------|------|------|---------|
-| 00:15 | 办公室对视 | 尴尬/紧张 | 高 |
-| 01:00 | 拍桌争执 | 愤怒 | 高 |
-| 01:35 | 婚礼闪回 | 温馨/怀念 | 中 |
-| 02:10 | 信件特写 | 震惊/悲伤 | 极高 |
-| 02:45 | 握手释然 | 释然/温暖 | 高 |
-```
-
-## characters.md（人物档案）
-
-由步骤 4（校验与人物建档）产出，是后续文案撰写的**核心参考文件**。
-
-```markdown
-# 人物档案
-
-## 基本信息
-- 片名：xxx
-- 人物数量：3
-- 校验状态：已确认（对话+视觉交叉验证）
-
-## 人物列表
-
-### 角色 1：陈明
-- **对话标识**：Speaker A
-- **多源映射**：源1=Speaker A，源2=Speaker A（如多源时需标注）
-- **外貌特征**：30岁左右男性，短发，戴银框眼镜，身材偏瘦
-- **服装**：深蓝色西装，白色衬衫，黑色皮鞋
-- **性格特点**：表面强势冷静，内心矛盾挣扎
-- **身份/职业**：律师
-- **关键台词**：
-  - "你根本不懂我为什么要这么做"（01:05）
-  - "对不起，我应该早告诉你"（02:25）
-- **出场时间段**：00:00-03:00（全程在场）
-
-### 角色 2：林雪
-- **对话标识**：Speaker B
-- **外貌特征**：28岁左右女性，长发扎马尾，精致妆容
-- **服装**：米白色连衣裙，手腕佩戴银手链
-- **性格特点**：倔强独立，情感细腻，容易动情
-- **身份/职业**：设计师
-- **关键台词**：
-  - "你从来就没有在乎过我的感受"（00:45）
-  - "原来是这样..."（02:15）
-- **出场时间段**：00:10-03:00
-
-### 角色 3：秘书小张
-- **对话标识**：Speaker C
-- **外貌特征**：25岁左右女性，齐肩短发，职业装
-- **性格特点**：干练、低调
-- **身份/职业**：陈明的秘书
-- **关键台词**：
-  - "陈律师，林小姐到了"（00:05）
-- **出场时间段**：00:00-00:10, 02:40-03:00
-
-## 人物关系图
-
-| 角色 A | 角色 B | 关系 | 关系描述 |
-|--------|--------|------|---------|
-| 陈明 | 林雪 | 前夫妻 | 已离婚，因财产分割再次见面 |
-| 陈明 | 秘书小张 | 上下级 | 小张是陈明的助理秘书 |
-| 林雪 | 秘书小张 | 无直接关系 | 仅在见面时有礼貌性交流 |
-
-## 关系变化
-
-1. **开场阶段**（00:00-00:30）：陈明和林雪以"前夫妻"身份见面，气氛尴尬冷淡
-2. **冲突阶段**（00:30-01:30）：因财产分割问题激烈争执，关系紧张对立
-3. **转折阶段**（01:30-02:00）：闪回婚礼场景，暗示两人曾深爱彼此
-4. **高潮阶段**（02:00-02:30）：林雪发现陈明离婚是为了保护她，关系从对立转为理解
-5. **结局阶段**（02:30-03:00）：两人释然和解，关系回归平和
-
-## 校验备注
-
-- 初步分析时将 A 判断为"公司高管"，视觉确认为"律师"（特写中可见律师执照）
-- 初步分析时 A 和 B 关系不明确，视觉中婚戒和婚礼闪回确认为"前夫妻"
-- Speaker C 在对话中仅出现 2 句，视觉分析中确认存在第三个角色
-```
-
-> **重要**：步骤 5 必须先产出 `final_script.md`，再从中派生 `voiceover.md`。二者都必须使用 `characters.md` 中的人物称呼和关系描述，确保全片一致。
-
-## final_script.md（最终剪辑脚本）
-
-这是步骤 5 的**主文件**，描述最终成片的逐段播放方式。
-
-```markdown
-# 最终剪辑脚本
-
-- 总段数：6
-- 解说配音段：4
-- 播放原片段：2
-- 预估总时长：58.2s
-
-| 段落 | 播放方式 | 文案/台词 | 预估时长 | 对应剧情时间 | 源文件 | 备注 |
-|------|----------|-----------|---------|------------|--------|------|
-| 15 | 解说配音 | 回到娘家，怀孕的嫂子当着全家人的面说—— | 4.0s | 02:45-02:49 | 1 | 用解说铺垫冲突 |
-| 16 | 播放原片 | 房子这么小，小姑子带个拖油瓶回来，挤得我胎都不稳了。 | 6.0s | 02:49-02:55 | 1 | 使用原片表演和原声，不生成 TTS |
-```
-
-**字段规则**：
-- `播放方式` 只能是 `解说配音` 或 `播放原片`
-- `播放原片` 表示该段直接使用原片原声，不生成 TTS
-- `文案/台词` 可写解说文案，也可写要保留的原片台词
-- `源文件` 多源时必填；单源时可省略或固定为 `1`
-
-## voiceover.md（TTS 文案）
-
-这是从 `final_script.md` 中**筛选出 `播放方式=解说配音` 的段落**后得到的派生文件，供步骤 6 生成配音。
-
-```markdown
-# 解说配音文案
-
-- 总段数：4
-- 预估总时长：34.2s
-
-| 音频ID | final_segment | 文案 | 音频时长 | 对应剧情时间 | 源文件 |
-|--------|---------------|------|----------|------------|--------|
-| vo_15 | 15 | 回到娘家，怀孕的嫂子当着全家人的面说—— | 4.0s | 02:45-02:49 | 1 |
-| vo_17 | 17 | 这话不是抱怨，是驱逐令。 | 3.0s | 02:55-02:58 | 1 |
-```
-
-> **多源时**：增加“源文件”列，标注该段画面来自哪个原片（编号从 1 开始）。单源时可省略此列。
-
-## visual_analysis.json（全片视觉描述）
-
-由步骤 3 调用 `doubaovision` 进行全片分析产出。
+### 推荐结构
 
 ```json
 {
-  "source": "source.mp4",
-  "model": "doubaovision",
-  "fps": 0.5,
-  "duration": 180.5,
-  "summary": "全片整体概述，包括故事类型、主要人物、整体环境",
-  "scenes": [
-    {
-      "time": "00:00-00:30",
-      "visual": "场景的视觉描述",
-      "characters": ["人物外貌和状态"],
-      "emotion": "情绪氛围",
-      "key_details": ["对文案撰写最有价值的视觉线索"]
-    }
-  ]
-}
-```
-
-> 步骤 3 每个视频调用 1 次 `doubaovision` 进行全片分析，步骤 7 的 `doubao-chat` subagent 负责精确匹配画面时间段。
-
-## scene_matching.json（画面匹配结果）
-
-由 `doubao-chat` subagent 多轮对话匹配后输出。**新格式为逐段时间线格式**，按 `final_script.md` 的段落顺序排列。
-
-```json
-{
-  "source": "source.mp4",
-  "sources": ["/path/to/source1.mp4", "/path/to/source2.mp4"],
-  "model": "doubao-seed-1-8-251228",
-  "fps": 0.5,
-  "segments": [
-    {
-      "segment": 15,
-      "play_mode": "tts",
-      "source_index": 1,
-      "text": "回到娘家，怀孕的嫂子当着全家人的面说——",
-      "audio_file": "audio/vo_15.mp3",
-      "audio_duration": 4.0,
-      "video": {"start": 165.0, "end": 169.2},
-      "match_reason": "匹配理由，便于人工审核"
-    },
-    {
-      "segment": 16,
-      "play_mode": "original",
-      "source_index": 1,
-      "text": "房子这么小，小姑子带个拖油瓶回来，挤得我胎都不稳了。",
-      "use_original_audio": true,
-      "video": {"start": 169.2, "end": 175.8},
-      "match_reason": "该时间段包含嫂子完整原台词和情绪表演，适合直接播放原片"
-    }
-  ],
-  "used_time_ranges": {
-    "1": [[165.0, 169.2], [169.2, 175.8]],
-    "2": []
-  }
-}
-```
-
-> **字段说明**：
-> - `source`：单源时使用此字段
-> - `sources`：多源时使用此字段（数组），`source_index` 对应数组下标（从 1 开始）
-> - `source_index`：该片段画面来自哪个原片（编号从 1 开始）。单源时可省略或固定为 1
-> - `play_mode`：`tts` 或 `original`
-> - `audio_file` / `audio_duration`：仅 `tts` 段必填
-> - `use_original_audio`：仅 `original` 段使用，固定为 `true`
-> - `video`：该最终段落在原片中的实际使用时间段
-
-## state.json（项目状态）
-
-```json
-{
+  "version": "1.0",
   "project": {
-    "name": "项目名",
-    "sources": ["/path/to/source1.mp4", "/path/to/source2.mp4"],
-    "created_at": "2026-02-27T10:00:00"
+    "name": "jljw2_drama_explainer",
+    "title": "她最狼狈那天被求婚，他却在婚宴上当众护到底",
+    "created_at": "2026-03-13T12:00:00Z"
   },
-  "progress": {
-    "current_step": 7,
-    "steps": {
-      "1_analysis": "completed",
-      "2_plot_analysis": "completed",
-      "3_visual_analysis": "completed",
-      "4_verification": "completed",
-      "5_script": "completed",
-      "6_audio": "completed",
-      "7_matching": "in_progress",
-      "8_clips": "pending",
-      "9_render": "pending",
-      "10_subtitles": "pending"
-    }
-  },
-  "media": {
-    "sources": [
-      {
-        "path": "/path/to/source1.mp4",
-        "duration": 180.5,
-        "width": 1080,
-        "height": 1920,
-        "fps": 25
-      },
-      {
-        "path": "/path/to/source2.mp4",
-        "duration": 150.0,
-        "width": 1080,
-        "height": 1920,
-        "fps": 25
-      }
-    ]
-  },
-  "segments": [
+  "sources": [
     {
-      "id": 15,
-      "play_mode": "tts",
-      "needs_tts": true,
       "source_index": 1,
-      "text": "回到娘家，怀孕的嫂子当着全家人的面说——",
-      "audio_duration": 4.0,
-      "video": {"start": 165.0, "end": 169.2},
-      "audio_file": "audio/vo_15.mp3",
-      "status": "matched"
-    },
-    {
-      "id": 16,
-      "play_mode": "original",
-      "needs_tts": false,
-      "source_index": 1,
-      "text": "房子这么小，小姑子带个拖油瓶回来，挤得我胎都不稳了。",
-      "video": {"start": 169.2, "end": 175.8},
-      "use_original_audio": true,
-      "status": "merged"
+      "source_path": "/abs/path/1.mp4",
+      "subtitle_path": "/abs/path/1.srt",
+      "transcript_path": "analysis/transcript_01.json",
+      "duration_sec": 182.4
     }
   ],
-  "used_time_ranges": {
-    "1": [[165.0, 169.2], [169.2, 175.8]],
-    "2": []
+  "draft_script_path": "scripts/draft_script.md",
+  "segments": [
+    {
+      "id": "seg_01",
+      "title": "开场钩子",
+      "mode": "voiceover",
+      "source_index": 1,
+      "source_path": "/abs/path/1.mp4",
+      "start": null,
+      "end": null,
+      "text": "洪灾刚过，她硬闯医务室救人，转头却被家里逼着改嫁。",
+      "text_raw": null,
+      "mute_original": true,
+      "audio_file": null,
+      "audio_duration_sec": null,
+      "status": "scripted",
+      "notes": "hook_preposed=true；用后文最强处境做开场，VO 负责立题"
+    },
+    {
+      "id": "seg_02",
+      "title": "怒斥领导命金贵",
+      "mode": "original",
+      "source_index": 1,
+      "source_path": "/abs/path/1.mp4",
+      "start": "00:00:50.580",
+      "end": "00:00:56.900",
+      "text": "你检查个铲铲呐，再检查都好球了。国家领导现在的身体叫金贵，我们那些工人的命都不值钱呐。",
+      "text_raw": "你检查个铲铲呐，再检查都好球了。国家领导现在的身体叫金贵，我们那些工人的命都不值钱呐。",
+      "mute_original": false,
+      "audio_file": null,
+      "audio_duration_sec": null,
+      "status": "scripted",
+      "notes": "必须保留原声：这句最能立住蔡小燕的脾气和立场"
+    }
+  ],
+  "output": {
+    "final_video": null
   }
 }
 ```
 
-> **向后兼容**：单源时 `project.sources` 为单元素数组，`media.sources` 也为单元素数组。旧格式的 `project.source`（字符串）和 `media`（扁平对象）仍可识别。
+### 顶层字段说明
+
+- `version`：schema 版本号
+- `project.name`：项目名
+- `project.title`：成片标题或工作标题
+- `project.created_at`：ISO 8601 时间戳
+- `sources`：原视频信息列表
+- `draft_script_path`：对应初稿路径
+- `segments`：最终分镜时间线
+- `output.final_video`：最终成片路径
+
+### `sources[]` 字段说明
+
+- `source_index`：素材编号，从 `1` 开始
+- `source_path`：素材绝对路径
+- `subtitle_path`：字幕路径，用于台词锚定
+- `transcript_path`：transcript 路径
+- `duration_sec`：素材总时长，单位秒
+
+### `segments[]` 字段说明
+
+- `id`：片段唯一标识
+- `title`：供人工审查的短标题
+- `mode`：只允许 `voiceover` 或 `original`
+- `source_index`：对应 `sources[].source_index`
+- `source_path`：冗余保存，便于人工审查和调试
+- `start` / `end`：使用时间范围；`original` 在步骤 6 就必须有值，`voiceover` 在步骤 8 匹配后回填
+- `text`：最终展示文本
+- `text_raw`：原始字幕 / ASR 文本；`original` 段应保留，`voiceover` 固定为 `null`
+- `mute_original`：`voiceover = true`，`original = false`
+- `audio_file`：对应配音文件，仅 `voiceover` 段回填
+- `audio_duration_sec`：对应配音时长，仅 `voiceover` 段回填
+- `status`：建议使用 `scripted` / `audio_ready` / `matched` / `merged` / `rendered`
+- `notes`：必须写一句解释，说明为何保留原声或为何这里必须 VO；如有时间回跳，写 `hook_preposed=true`
+
+## `storyboard.json` 质量规则
+
+### 强制规则
+
+- `original.text` 必须是真实展示台词，不能是摘要标签
+- `original` 段必须保留 `text_raw`
+- `voiceover` 不得复述紧邻 `original` 刚说清楚的内容
+- 若同一 source 出现时间回跳，`notes` 必须标明 `hook_preposed=true`
+- 全部最终渲染逻辑只读取 `storyboard.json`
+
+### 编辑规则
+
+- 优先保留“最有戏”的原片，不优先保留“最完整”的原片
+- `voiceover` 只负责铺垫、转场、补信息
+- 情绪链条必须完整，不能只留结果
+- 钩子必须来自后文真正最强的一段戏，而不是泛泛总结
+
+## `storyboard.json` 常见负例
+
+### 负例 1：摘要冒充台词
+
+```json
+{
+  "mode": "original",
+  "text": "婆婆羞辱儿媳",
+  "text_raw": "我儿放到那么多条件好的、长得贵的女娃儿不要。可以找个二婚的。"
+}
+```
+
+问题：`text` 不是最终展示台词，而是摘要标签。
+
+### 负例 2：VO 套话过重
+
+```json
+{
+  "mode": "voiceover",
+  "text": "命运的齿轮在这一刻开始转动，她终于站稳了人生。"
+}
+```
+
+问题：空泛、模板化、没有人物感。
+
+### 负例 3：时间回跳无说明
+
+```json
+[
+  {"id": "seg_01", "source_index": 1, "start": "00:03:10.000", "end": "00:03:18.000", "notes": ""},
+  {"id": "seg_02", "source_index": 1, "start": "00:00:50.000", "end": "00:00:56.000", "notes": ""}
+]
+```
+
+问题：同源内发生明显回跳，但没有标记是钩子前置。
+
+## `final_script.md`
+
+这是从 `storyboard.json` 派生的**人类审查稿**，不再是程序输入。
+
+建议格式：
+
+```markdown
+# final_script
+
+## segment seg_01
+- mode: voiceover
+- source: 1.mp4
+- start: null
+- end: null
+- text: 洪灾刚过，她硬闯医务室救人，转头却被家里逼着改嫁。
+- notes: hook_preposed=true；用后文最强处境做开场
+
+## segment seg_02
+- mode: original
+- source: 1.mp4
+- start: 00:00:50.580
+- end: 00:00:56.900
+- text: 你检查个铲铲呐，再检查都好球了。国家领导现在的身体叫金贵，我们那些工人的命都不值钱呐。
+- notes: 必须保留原声；这句最能立住人物
+```
+
+## `voiceover.md`
+
+这是从 `storyboard.json` 中筛选出 `mode = voiceover` 的段落后得到的派生文件。
+
+```markdown
+# Voiceover
+
+- VO01 | storyboard_segment=seg_01 | 洪灾刚过，她硬闯医务室救人，转头却被家里逼着改嫁。
+```
+
+## `scene_matching.json`
+
+这是步骤 8 的可选审查快照，不是新的真相源。
+
+如果生成，必须和 `storyboard.json` 保持一致，只用于人工复核匹配质量。
+
+## `state.json`
+
+只保存：
+- `project`
+- `progress`
+- `media`
+- `last_error`
+
+不再保存：
+- `segments`
+- `used_time_ranges`
+- 任何片段级真相字段
