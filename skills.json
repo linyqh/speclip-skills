@@ -2,6 +2,7 @@
   {
     "name": "ffmpeg-best-practice",
     "description": "精简版 FFmpeg 最佳实践。适用于稳定的视频压缩、微信兼容 MP4 导出、拼接、音频处理、字幕处理，以及常见编码回退决策。",
+    "description_en": "Condensed FFmpeg best practices for reliable video compression, WeChat-compatible MP4 exports, concatenation, audio processing, subtitle handling, and common codec fallback decisions.",
     "files": [
       "ffmpeg-best-practice/SKILL.md"
     ]
@@ -9,6 +10,7 @@
   {
     "name": "landscape-subtitle-layout",
     "description": "横屏视频字幕位置与参数配置 skill。适用于 16:9 横屏视频的字幕烧录、ASS 样式调整、底部安全区控制，以及字幕高低与边距优化。",
+    "description_en": "Subtitle positioning and parameter configuration skill for landscape video. Suitable for 16:9 subtitle burn-in, ASS style tuning, bottom safe-area control, and subtitle height and margin optimization.",
     "files": [
       "landscape-subtitle-layout/SKILL.md"
     ]
@@ -16,6 +18,7 @@
   {
     "name": "portrait-subtitle-layout",
     "description": "竖屏视频字幕位置与参数配置 skill。适用于 9:16 竖屏视频的字幕烧录、ASS 样式调整、安全区控制、替换或压住原视频自带字幕，以及避让人物与底部 CTA 的字幕布局优化。当前版本为无遮罩方案，只优化字幕参数，不处理遮罩、底板、背景条或毛玻璃效果。用户一旦提到竖屏字幕位置、字号、边距、换行、盖住原字幕，都应优先触发。",
+    "description_en": "Subtitle positioning and parameter configuration skill for portrait video. Suitable for 9:16 subtitle burn-in, ASS style tuning, safe-area control, replacing or covering hardcoded subtitles, and optimizing subtitle layout to avoid faces and bottom CTAs. The current version is mask-free and only adjusts subtitle parameters, without handling overlays, plates, background bars, or glass effects. Prioritize this skill whenever the user mentions portrait subtitle position, font size, margins, line breaks, or covering existing subtitles.",
     "files": [
       "portrait-subtitle-layout/SKILL.md"
     ]
@@ -23,6 +26,7 @@
   {
     "name": "drama-explainer",
     "description": "短剧解说成片 skill。适用于短剧二创、剧情解说、狗血短剧混剪、情绪冲突型剧情拆解等场景；从原片分析剧情与人物，产出 `storyboard.json`、解说配音、画面匹配和最终成片，强调“保留原片最有戏的台词和表演，再用 VO 串联剧情”。",
+    "description_en": "Short-drama explainer production skill. Suitable for short-drama remixes, plot explainers, melodramatic mashups, and emotionally driven story breakdowns. It analyzes the source footage and characters, then produces `storyboard.json`, voice-over narration, shot matching, and the final edited video, with an emphasis on preserving the most dramatic original lines and performances and connecting the story with VO.",
     "files": [
       "drama-explainer/SKILL.md",
       "drama-explainer/README.md",
@@ -40,6 +44,7 @@
   {
     "name": "drama-script-writer",
     "description": "短剧、影视、悬疑剧情视频的解说文案创作 skill。根据字幕、剧情梗概、人物关系或视觉笔记撰写解说词，默认参考《豺狼的日子》样本风格。",
+    "description_en": "Explainer script writing skill for short dramas, film and TV, and suspense story videos. Writes narration based on subtitles, plot summaries, character relationships, or visual notes, defaulting to a style inspired by The Day of the Jackal samples.",
     "files": [
       "drama-script-writer/SKILL.md",
       "drama-script-writer/references/style-notes.md",
@@ -54,6 +59,7 @@
   {
     "name": "talking-head-editor",
     "description": "口播 / talking-head 视频精剪 skill。适用于根据字幕、逐句 transcript 或审片笔记删除停顿、废话、口头禅，生成可执行的粗剪方案、jump cut 处理建议和导出要求。",
+    "description_en": "Fine-cut editing skill for talking-head videos. Suitable for removing pauses, filler, and verbal tics based on subtitles, line-by-line transcripts, or review notes, then producing an executable rough-cut plan, jump-cut suggestions, and export requirements.",
     "files": [
       "talking-head-editor/SKILL.md",
       "talking-head-editor/references/workflow.md",
@@ -64,6 +70,7 @@
   {
     "name": "skill-creator",
     "description": "Skill 创建指南。帮助用户创建新的 Skill，扩展 AI 的专业能力和工作流。",
+    "description_en": "Guide for creating skills. Helps users build new skills that extend the AI's specialized capabilities and workflows.",
     "files": [
       "skill-creator/SKILL.md",
       "skill-creator/agents/analyzer.md",
