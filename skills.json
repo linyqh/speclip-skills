@@ -66,7 +66,22 @@
     "description": "Skill 创建指南。帮助用户创建新的 Skill，扩展 AI 的专业能力和工作流。",
     "files": [
       "skill-creator/SKILL.md",
-      "skill-creator/SKILL-zh.md"
+      "skill-creator/agents/analyzer.md",
+      "skill-creator/agents/comparator.md",
+      "skill-creator/agents/grader.md",
+      "skill-creator/assets/eval_review.html",
+      "skill-creator/eval-viewer/generate_review.py",
+      "skill-creator/eval-viewer/viewer.html",
+      "skill-creator/references/schemas.md",
+      "skill-creator/scripts/__init__.py",
+      "skill-creator/scripts/aggregate_benchmark.py",
+      "skill-creator/scripts/generate_report.py",
+      "skill-creator/scripts/improve_description.py",
+      "skill-creator/scripts/package_skill.py",
+      "skill-creator/scripts/quick_validate.py",
+      "skill-creator/scripts/run_eval.py",
+      "skill-creator/scripts/run_loop.py",
+      "skill-creator/scripts/utils.py"
     ]
   }
 ]
