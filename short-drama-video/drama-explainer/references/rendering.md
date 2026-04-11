@@ -15,13 +15,25 @@
 ### 阶段 A：逐段截取
 
 ```bash
-trimvideo(input_path=<segment.source_path>, start=<segment.start>, end=<segment.end>, \
-          output_path=<项目名>/clips/raw/clip_015.mp4)
+ffmpeg -y \
+  -i <segment.source_path> \
+  -ss <segment.start> \
+  -to <segment.end> \
+  -c:v libx264 \
+  -preset veryfast \
+  -crf 18 \
+  -c:a aac \
+  -b:a 192k \
+  -movflags +faststart \
+  <项目名>/clips/raw/clip_015.mp4
 ```
 
 要求：
 - 一切路径和时间从 `storyboard.json` 读取
 - 多源时直接读 `source_path`
+- Speclip 已移除 `trimvideo`；逐段裁切统一直接用 FFmpeg
+- 默认优先**帧准确裁切**，不要为了省事直接假设可以无损 copy 切到精确边界
+- 如果后续阶段还要统一编码参数，阶段 A 也可以作为“可控的中间片段导出”步骤
 
 ### 阶段 B：标准化与音频合成
 
