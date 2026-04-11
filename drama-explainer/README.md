@@ -2,6 +2,8 @@
 
 一个面向短剧二创的“解说配音 + 原片高张力片段穿插”成片技能。
 
+当前工作流已升级为：**向量检索先召回候选戏眼，再由编辑流程决定保留哪些原声与 VO**，而不是只靠全量通读 transcript / visual analysis。
+
 ## 适用场景
 
 当用户要做这些事情时，应优先使用它：
@@ -21,6 +23,7 @@
 
 - `analysis/plot_analysis.md`
 - `analysis/characters.md`
+- `analysis/retrieval_candidates.json`（可选）
 - `scripts/draft_script.md`
 - `scripts/storyboard.json`
 - `scripts/final_script.md`
@@ -30,6 +33,7 @@
 ## 设计原则
 
 - `storyboard.json` 是唯一真相源
+- 先用 `videoindex` / `videosearch` 召回候选片段，再做人类可审查的编辑决策
 - 步骤 5 只把故事讲顺
 - 步骤 6 才做真正的编辑决策
 - 优先保留最有戏的原片，而不是最完整的原片

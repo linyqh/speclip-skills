@@ -7,16 +7,37 @@
 - 保证画面时长覆盖对应 `audio_duration_sec`
 - 让匹配结果服务于**情绪推进**，而不是只做到“相关”
 
+默认流程是：**先用 `videosearch` 召回候选，再用 transcript / visual analysis 复核后落位**。
+
 `mode = original` 的段落在步骤 6 已通过字幕 / transcript 锚定精确时间。步骤 8 只在缺失或需要校正时补写。
 
 ## 输入
 
 匹配前必须提供：
 - 当前 source 对应视频路径
+- 可用的视频向量索引；若还没建立，先补做 `videoindex`
 - transcript 时间轴摘要
+- 如已生成，优先带上 `analysis/retrieval_candidates.json`
 - `storyboard.json` 中待匹配的 `voiceover` 片段
 - 对应片段的 `audio_duration_sec`
 - 当前 source 已占用时间段
+
+## 检索工作流
+
+对每个待匹配的 `voiceover` 片段：
+
+1. 先写 2-3 条自然语言 query，覆盖：
+   - 该句 VO 的**剧情动作**
+   - 该句 VO 的**情绪承载**
+   - 必要时补充人物关系或场面氛围
+2. 用 `videosearch` 召回候选片段
+3. 回看 transcript / `visual_analysis*.json`，过滤掉“语义相关但没戏”的结果
+4. 只在候选不足或命中歧义很大时，再补做视觉复核
+
+示例 query：
+- “婆婆当众羞辱儿媳，周围人围观，压迫感很强”
+- “孩子安慰妈妈，动作和表情明显，情绪缓下来”
+- “男主公开站队护妻，现场有人围观，反击感强”
 
 ## 匹配原则
 
@@ -40,12 +61,13 @@
 - “画面和文案相关”
 - “该场景出现在这段时间” 
 
-## subagent prompt 规范
+## subagent / 工具调用规范
 
-派发给 `doubao-chat` 的 prompt 必须明确：
+派发给 `video-search` subagent，或直接调用 `videosearch` 时，必须明确：
 - 只匹配 `voiceover` 段
+- 先做检索召回，再做人工筛选
 - 输出只包含：`id`、`source_index`、`start`、`end`、`notes`
-- `notes` 必须写清：为什么这段画面能承载该句 VO 的情绪和叙事作用
+- `notes` 必须写清：为什么这段画面能承载该句 VO 的情绪和叙事作用，必要时说明为什么放弃更高分候选
 
 示例输出：
 
@@ -68,6 +90,7 @@
 3. 同一 `source_index` 内所有已占用时间段不能重叠
 4. 时间不能越界
 5. 若匹配结果只有语义相关、没有情绪承载价值，应视为低质量匹配并返工
+6. 至少一次有效候选必须来自向量检索召回结果，而不是跳过检索直接拍脑袋选段
 
 ## 音频超长修复流程
 

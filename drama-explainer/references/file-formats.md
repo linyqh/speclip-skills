@@ -13,6 +13,7 @@
 | 视觉描述 | `visual_analysis.json` | `visual_analysis_01.json`, `visual_analysis_02.json`, ... |
 | 剧情分析 | `plot_analysis.md` | `plot_analysis.md` |
 | 人物档案 | `characters.md` | `characters.md` |
+| 检索候选快照 | `retrieval_candidates.json` | `retrieval_candidates.json` |
 | 原始文案 | `draft_script.md` | `draft_script.md` |
 | 分镜主数据 | `storyboard.json` | `storyboard.json` |
 | 匹配快照 | `scene_matching.json` | `scene_matching.json` |
@@ -96,6 +97,8 @@
   }
 }
 ```
+
+> 注意：向量索引本身属于工具运行时状态，不写入 `storyboard.json`。如需保留检索证据，请写到 `analysis/retrieval_candidates.json`。
 
 ### 顶层字段说明
 
@@ -184,6 +187,51 @@
 ```
 
 问题：同源内发生明显回跳，但没有标记是钩子前置。
+
+## `retrieval_candidates.json`
+
+这是步骤 3.5 的**可选检索候选快照**，用于记录向量检索召回过哪些高张力候选，帮助步骤 6 / 8 回放检索依据。
+
+它不是新的真相源；最终入选片段仍以 `storyboard.json` 为准。
+
+### 推荐结构
+
+```json
+{
+  "version": "1.0",
+  "generated_at": "2026-03-13T12:20:00Z",
+  "queries": [
+    {
+      "label": "羞辱",
+      "query": "婆家当众羞辱儿媳，语气刻薄，围观压力强",
+      "results": [
+        {
+          "source_index": 1,
+          "start": "00:00:50.580",
+          "end": "00:00:56.900",
+          "score": 0.8731,
+          "reason": "台词和围观氛围都强，适合作为羞辱戏眼候选"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### 字段说明
+
+- `label`：候选类别，如 `羞辱` / `反抗` / `护子` / `安慰` / `站队`
+- `query`：实际用于 `videosearch` 的自然语言检索语句
+- `results[].source_index`：命中的素材编号
+- `results[].start` / `results[].end`：命中的候选时间范围
+- `results[].score`：相似度分数，用于排序参考
+- `results[].reason`：为什么这条结果值得进入后续人工筛选
+
+### 质量规则
+
+- 每类关键情绪至少保留 1 组有效候选
+- 不要只保存“语义相关但没戏”的说明性镜头
+- 候选不足时，优先改写 query 再检索，不要直接跳过关键情绪节点
 
 ## `final_script.md`
 
