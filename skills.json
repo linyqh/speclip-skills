@@ -28,17 +28,28 @@
     "description": "短剧解说成片 skill。适用于短剧二创、剧情解说、狗血短剧混剪、情绪冲突型剧情拆解等场景；从原片分析剧情与人物，产出 `storyboard.json`、解说配音、画面匹配和最终成片，强调“保留原片最有戏的台词和表演，再用 VO 串联剧情”。",
     "description_en": "Short-drama explainer production skill. Suitable for short-drama remixes, plot explainers, melodramatic mashups, and emotionally driven story breakdowns. It analyzes the source footage and characters, then produces `storyboard.json`, voice-over narration, shot matching, and the final edited video, with an emphasis on preserving the most dramatic original lines and performances and connecting the story with VO.",
     "files": [
-      "drama-explainer/SKILL.md",
-      "drama-explainer/README.md",
-      "drama-explainer/references/file-formats.md",
-      "drama-explainer/references/dramatic-editor-guide.md",
-      "drama-explainer/references/rendering.md",
-      "drama-explainer/references/scene-matching-guide.md",
-      "drama-explainer/evals/evals.json",
-      "drama-explainer/evals/review-rubric.md",
-      "drama-explainer/evals/cases/conflict-case.md",
-      "drama-explainer/evals/cases/emotion-case.md",
-      "drama-explainer/evals/cases/reversal-case.md"
+      "short-drama-video/drama-explainer/SKILL.md",
+      "short-drama-video/drama-explainer/README.md",
+      "short-drama-video/drama-explainer/references/file-formats.md",
+      "short-drama-video/drama-explainer/references/dramatic-editor-guide.md",
+      "short-drama-video/drama-explainer/references/rendering.md",
+      "short-drama-video/drama-explainer/references/scene-matching-guide.md",
+      "short-drama-video/drama-explainer/evals/evals.json",
+      "short-drama-video/drama-explainer/evals/review-rubric.md",
+      "short-drama-video/drama-explainer/evals/cases/conflict-case.md",
+      "short-drama-video/drama-explainer/evals/cases/emotion-case.md",
+      "short-drama-video/drama-explainer/evals/cases/reversal-case.md"
+    ]
+  },
+  {
+    "name": "short-drama-commentary",
+    "description": "字幕优先的短剧解说结构设计 skill。适用于拆解优秀短剧解说字幕、总结其结构与原片/解说穿插规律，或基于原剧字幕直接输出 beat sheet、插片计划和混排脚本。",
+    "description_en": "Subtitle-first short-drama commentary structuring skill. It analyzes successful commentary subtitles to extract structure and original-footage vs narration patterns, or plans beat sheets, insertion maps, and mixed scripts directly from source subtitles.",
+    "files": [
+      "short-drama-video/short-drama-commentary/SKILL.md",
+      "short-drama-video/short-drama-commentary/README.md",
+      "short-drama-video/short-drama-commentary/references/corpus-insights.md",
+      "short-drama-video/short-drama-commentary/references/output-template.md"
     ]
   },
   {
@@ -46,14 +57,14 @@
     "description": "短剧、影视、悬疑剧情视频的解说文案创作 skill。根据字幕、剧情梗概、人物关系或视觉笔记撰写解说词，默认参考《豺狼的日子》样本风格。",
     "description_en": "Explainer script writing skill for short dramas, film and TV, and suspense story videos. Writes narration based on subtitles, plot summaries, character relationships, or visual notes, defaulting to a style inspired by The Day of the Jackal samples.",
     "files": [
-      "drama-script-writer/SKILL.md",
-      "drama-script-writer/references/style-notes.md",
-      "drama-script-writer/references/examples/豺狼的日子1.txt",
-      "drama-script-writer/references/examples/豺狼的日子2.txt",
-      "drama-script-writer/references/examples/豺狼的日子3.txt",
-      "drama-script-writer/references/examples/豺狼的日子4.txt",
-      "drama-script-writer/references/examples/豺狼的日子5.txt",
-      "drama-script-writer/references/examples/豺狼的日子6.txt"
+      "short-drama-video/drama-script-writer/SKILL.md",
+      "short-drama-video/drama-script-writer/references/style-notes.md",
+      "short-drama-video/drama-script-writer/references/examples/豺狼的日子1.txt",
+      "short-drama-video/drama-script-writer/references/examples/豺狼的日子2.txt",
+      "short-drama-video/drama-script-writer/references/examples/豺狼的日子3.txt",
+      "short-drama-video/drama-script-writer/references/examples/豺狼的日子4.txt",
+      "short-drama-video/drama-script-writer/references/examples/豺狼的日子5.txt",
+      "short-drama-video/drama-script-writer/references/examples/豺狼的日子6.txt"
     ]
   },
   {

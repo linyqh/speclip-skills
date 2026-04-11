@@ -26,3 +26,4 @@ venv/
 **/state.json
 
 CLAUDE.md
+.omx/

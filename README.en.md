@@ -19,7 +19,7 @@
   <a href="#help">Help</a>
 </p>
 
-> `Speclip Skills` currently includes `7` reusable skills for AI video workflows, video editing automation, FFmpeg usage, subtitle layout, short-drama commentary, and talking-head editing.
+> `Speclip Skills` currently includes `8` reusable skills for AI video workflows, video editing automation, FFmpeg usage, subtitle layout, short-drama commentary, and talking-head editing.
 
 ---
 
@@ -52,8 +52,8 @@ Each skill typically includes:
 
 ## Repository Snapshot
 
-- `7` indexed skills in [`skills.json`](./skills.json)
-- `3` content and editing skills: `drama-explainer`, `drama-script-writer`, `talking-head-editor`
+- `8` indexed skills in [`skills.json`](./skills.json)
+- `4` content and editing skills: `drama-explainer`, `short-drama-commentary`, `drama-script-writer`, `talking-head-editor`
 - `3` execution and layout skills: `ffmpeg-best-practice`, `landscape-subtitle-layout`, `portrait-subtitle-layout`
 - `1` meta-skill: `skill-creator`
 - Primary README is Chinese; English docs live in this file
@@ -67,6 +67,7 @@ Each skill typically includes:
 
 | If you want to... | Use this skill | Typical output |
 | --- | --- | --- |
+| Analyze successful short-drama commentary subtitles and plan narration/original-footage interleaving | `short-drama-commentary` | structure diagnosis, insertion plan, beat sheet, mixed script |
 | Turn raw short-drama footage into commentary videos | `drama-explainer` | plot understanding, narration structure, clip matching, rendering guidance |
 | Write commentary scripts from subtitles or plot notes | `drama-script-writer` | script draft, narrative structure, emotional framing |
 | Clean up a talking-head video | `talking-head-editor` | rough-cut suggestions, filler removal, jump-cut rules |
@@ -88,6 +89,10 @@ Natural-language examples:
 <a id="skills"></a>
 
 ## Skills Included
+
+### `short-drama-commentary`
+
+A subtitle-first structuring skill for short-drama commentary. Use it to dissect successful commentary subtitles, learn where to keep original dialogue versus narration, or plan beat sheets and mixed scripts directly from source subtitles.
 
 ### `drama-explainer`
 
@@ -133,13 +138,14 @@ cd speclip-skills
 ### 2. Install a skill
 
 ```bash
-claude install-skill ./drama-explainer
+claude install-skill ./short-drama-video/drama-explainer
 ```
 
 Common options:
 
 ```bash
-claude install-skill ./drama-script-writer
+claude install-skill ./short-drama-video/short-drama-commentary
+claude install-skill ./short-drama-video/drama-script-writer
 claude install-skill ./talking-head-editor
 claude install-skill ./ffmpeg-best-practice
 claude install-skill ./landscape-subtitle-layout

@@ -19,7 +19,7 @@
   <a href="#help">获取帮助</a>
 </p>
 
-> `Speclip Skills` 是一个开源仓库，当前收录 `7` 个可复用的 AI 视频工作流 Skills，适合做 AI video workflow、video editing automation、FFmpeg best practice、subtitle layout、short drama commentary 和 talking-head editing。
+> `Speclip Skills` 是一个开源仓库，当前收录 `8` 个可复用的 AI 视频工作流 Skills，适合做 AI video workflow、video editing automation、FFmpeg best practice、subtitle layout、short drama commentary 和 talking-head editing。
 
 ---
 
@@ -52,8 +52,8 @@
 
 ## 仓库快照
 
-- `7` 个已收录 Skills，索引见 [`skills.json`](./skills.json)
-- `3` 个内容 / 剪辑向 Skills：`drama-explainer`、`drama-script-writer`、`talking-head-editor`
+- `8` 个已收录 Skills，索引见 [`skills.json`](./skills.json)
+- `4` 个内容 / 剪辑向 Skills：`drama-explainer`、`short-drama-commentary`、`drama-script-writer`、`talking-head-editor`
 - `3` 个执行 / 布局向 Skills：`ffmpeg-best-practice`、`landscape-subtitle-layout`、`portrait-subtitle-layout`
 - `1` 个元技能：`skill-creator`
 - 主 README 为中文，英文入口见 [`README.en.md`](./README.en.md)
@@ -84,6 +84,7 @@
 
 | 如果你想解决的问题 | 使用哪个 Skill | 典型输出 |
 | --- | --- | --- |
+| 拆解优秀短剧解说字幕、规划原片/解说穿插 | `short-drama-commentary` | 结构判断、插片计划、beat sheet、混排脚本 |
 | 把短剧原片做成解说视频 | `drama-explainer` | 剧情理解、解说结构、片段匹配、成片指导 |
 | 根据字幕或剧情梗概写解说稿 | `drama-script-writer` | 解说文案、叙事结构、情绪冲突表达 |
 | 精剪口播视频 | `talking-head-editor` | 粗剪建议、停顿清理、jump cut 处理规则 |
@@ -106,6 +107,17 @@
 <a id="skills"></a>
 
 ## Skills 列表
+
+### `short-drama-commentary`
+
+字幕优先的短剧解说结构设计 Skill。适合拆解优秀短剧解说字幕，学习“什么时候插原片、什么时候用解说压缩”，或直接根据原剧字幕产出插片计划和混排脚本。
+
+适合处理：
+
+- 优秀短剧解说样本拆解
+- 原片 / 解说穿插结构设计
+- beat sheet 与插片计划表
+- 混排脚本与节奏提纯
 
 ### `drama-explainer`
 
@@ -202,13 +214,14 @@ cd speclip-skills
 ### 2. 安装一个 Skill
 
 ```bash
-claude install-skill ./drama-explainer
+claude install-skill ./short-drama-video/drama-explainer
 ```
 
 常用安装示例：
 
 ```bash
-claude install-skill ./drama-script-writer
+claude install-skill ./short-drama-video/short-drama-commentary
+claude install-skill ./short-drama-video/drama-script-writer
 claude install-skill ./talking-head-editor
 claude install-skill ./ffmpeg-best-practice
 claude install-skill ./landscape-subtitle-layout
@@ -284,14 +297,20 @@ Speclip 提供的是完整执行环境，包括更适合真实视频生产的运
 
 ```text
 speclip-skills/
-├── drama-explainer/
-│   ├── SKILL.md
+├── short-drama-video/
 │   ├── README.md
-│   ├── evals/
-│   └── references/
-├── drama-script-writer/
-│   ├── SKILL.md
-│   └── references/
+│   ├── drama-explainer/
+│   │   ├── SKILL.md
+│   │   ├── README.md
+│   │   ├── evals/
+│   │   └── references/
+│   ├── drama-script-writer/
+│   │   ├── SKILL.md
+│   │   └── references/
+│   └── short-drama-commentary/
+│       ├── SKILL.md
+│       ├── README.md
+│       └── references/
 ├── talking-head-editor/
 │   ├── SKILL.md
 │   ├── agents/

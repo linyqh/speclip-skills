@@ -7,7 +7,7 @@
 - 保证画面时长覆盖对应 `audio_duration_sec`
 - 让匹配结果服务于**情绪推进**，而不是只做到“相关”
 
-默认流程是：**先用 `videosearch` 召回候选，再用 transcript / visual analysis 复核后落位**。
+默认流程是：**先用 `videosearch` 召回候选，再用 transcript 复核后落位；只有在必要时才补视觉复核**。
 
 `mode = original` 的段落在步骤 6 已通过字幕 / transcript 锚定精确时间。步骤 8 只在缺失或需要校正时补写。
 
@@ -32,7 +32,12 @@
    - 必要时补充人物关系或场面氛围
 2. 用 `videosearch` 召回候选片段
 3. 回看 transcript / `visual_analysis*.json`，过滤掉“语义相关但没戏”的结果
-4. 只在候选不足或命中歧义很大时，再补做视觉复核
+4. 只在下面情况之一，再补做视觉复核：
+   - 候选不足
+   - 命中歧义很大
+   - 候选都“相关但没戏”
+   - 需要判断无台词 / 少台词画面的情绪承载力
+   - transcript 质量差，单靠字幕无法判断表演强弱
 
 示例 query：
 - “婆婆当众羞辱儿媳，周围人围观，压迫感很强”
@@ -66,6 +71,7 @@
 派发给 `video-search` subagent，或直接调用 `videosearch` 时，必须明确：
 - 只匹配 `voiceover` 段
 - 先做检索召回，再做人工筛选
+- 不要默认整片调用 `doubaovision`
 - 输出只包含：`id`、`source_index`、`start`、`end`、`notes`
 - `notes` 必须写清：为什么这段画面能承载该句 VO 的情绪和叙事作用，必要时说明为什么放弃更高分候选
 
