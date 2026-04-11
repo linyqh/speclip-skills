@@ -4,6 +4,15 @@
 
 这个目录集中收纳了当前仓库里直接面向“短剧解说视频制作”的核心 skills，避免它们散落在仓库根目录，方便单独浏览、安装和维护。
 
+## 共享标准
+
+这个目录下所有短剧解说 skill 共同遵守两份共享参考：
+
+- `references/excellent-short-drama-commentary-playbook.md`
+- `references/skill-stack.md`
+
+它们定义了优秀短剧解说的共同质量标准、节奏红线和 3 个核心 skill 的分工关系。
+
 ## 已收纳的核心 skills
 
 - `drama-explainer/`
