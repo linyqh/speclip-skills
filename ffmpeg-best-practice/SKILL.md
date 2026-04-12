@@ -168,8 +168,30 @@ Before any burn-in command, you must first obtain subtitle settings parameters s
 - alignment/position
 - margins / safe area
 
+If subtitle masking is enabled in the current workspace, you must also obtain:
+
+- the exact subtitle mask filter snippet
+- the intended visual style of the mask (translucent glass-like blur, not a black rectangle)
+
 Do **not** burn subtitles directly from raw `.srt` or other plain subtitle sources.
 Always convert to `.ass` first so style and layout are explicit and reproducible.
+
+#### Required mask-aware burn-in workflow
+
+When the workspace enables subtitle masking, the only correct workflow is:
+
+1. Call `subtitle_settings` with `video_path`
+2. Read the returned `subtitleMaskFilter`
+3. Convert subtitles to `.ass`
+4. Apply the returned mask filter **before** the `.ass` subtitle filter
+
+Rules:
+
+- Use the `subtitle_settings` mask filter snippet **verbatim**
+- Do **not** replace it with `drawbox`, a black rectangle, or a custom gray overlay
+- The expected look is a **translucent glass-like blur** that keeps the background visible while making the source subtitle unreadable
+- If the user mentions the preview mask style, treat that preview style as the target appearance
+- If the burn-in result visually diverges from the preview, revise the FFmpeg parameters instead of falling back to a dark overlay
 
 Step 1: convert subtitle source to ASS:
 
@@ -184,6 +206,23 @@ ffmpeg -y -i "IN" -vf "subtitles='SUB.ass'" \
   -c:v libx264 -preset medium -crf 19 \
   -c:a aac -b:a 128k -map 0:v:0 -map 0:a? -movflags +faststart "OUT"
 ```
+
+Mask-aware burn in (preferred when masking is enabled):
+
+```bash
+ffmpeg -y -i "IN" \
+  -filter_complex "SUBTITLE_MASK_FILTER;[masked]subtitles=filename='SUB.ass'[v]" \
+  -map "[v]" -map 0:a? \
+  -c:v libx264 -preset medium -crf 18 -pix_fmt yuv420p \
+  -c:a copy -movflags +faststart "OUT"
+```
+
+Notes:
+
+- Replace `SUBTITLE_MASK_FILTER` with the exact filter string returned by `subtitle_settings(video_path=...)`
+- Do not hand-rewrite that filter unless the user is explicitly debugging the mask effect
+- Keep the mask filter and subtitle filter in a single `-filter_complex` pipeline
+- If audio exists and no audio edit is requested, prefer `-c:a copy`
 
 Soft subtitle mux:
 
