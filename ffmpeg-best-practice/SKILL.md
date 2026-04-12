@@ -28,7 +28,8 @@ Use this skill when the task requires direct FFmpeg work and the answer should b
 5. Prefer capped CRF first; use 2-pass only for a hard file-size target.
 6. Use `-map 0:a?` for optional audio and do not write `[0:a?]` inside `filter_complex`.
 7. If hardware encode fails or produces oversized output, fall back to `libx264`.
-8. Return the command, output path, chosen profile, and key flag rationale.
+8. For subtitle burn-in, first collect subtitle style/settings parameters, then convert subtitles to `.ass`, and only then run burn-in.
+9. Return the command, output path, chosen profile, and key flag rationale.
 
 ## Probe First
 
@@ -155,10 +156,31 @@ ffmpeg -y -i "IN" -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=48000 \
 
 ### 6) Subtitle handling
 
-Burn in:
+Burn in (required order: get subtitle settings -> convert to ASS -> burn in):
+
+Before any burn-in command, you must first obtain subtitle settings parameters such as:
+
+- font family
+- font size
+- primary color
+- outline/border color and width
+- shadow
+- alignment/position
+- margins / safe area
+
+Do **not** burn subtitles directly from raw `.srt` or other plain subtitle sources.
+Always convert to `.ass` first so style and layout are explicit and reproducible.
+
+Step 1: convert subtitle source to ASS:
 
 ```bash
-ffmpeg -y -i "IN" -vf "subtitles='SUB'" \
+ffmpeg -y -i "SUB_INPUT" "SUB.ass"
+```
+
+Step 2: burn in from the generated ASS file:
+
+```bash
+ffmpeg -y -i "IN" -vf "subtitles='SUB.ass'" \
   -c:v libx264 -preset medium -crf 19 \
   -c:a aac -b:a 128k -map 0:v:0 -map 0:a? -movflags +faststart "OUT"
 ```
